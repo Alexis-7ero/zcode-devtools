@@ -1,0 +1,5 @@
+# Windows：12MB 的未压缩 Broker 原版不入库（gz 版保留）
+windows/backup/originals/zcode.cjs
+windows/backup/metadata.json
+# macOS：运行时生成的整包备份
+macos/backup/
