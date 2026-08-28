@@ -17,9 +17,9 @@ function Show-Menu {
     Write-Host '╔══════════════════════════════════════════╗' -ForegroundColor Cyan
     Write-Host '║   ZCode DevTools  ·  CDP 补丁工具         ║' -ForegroundColor Cyan
     Write-Host '╠══════════════════════════════════════════╣' -ForegroundColor Cyan
-    Write-Host '║   [1] 安装 / 重刷补丁（含进度条）          ║'
+    Write-Host '║   [1] 安装 / 重刷补丁（自动退出ZCode+进度）  ║'
     Write-Host '║   [2] 备份当前原版文件                     ║'
-    Write-Host '║   [3] 卸载补丁（还原原版）                 ║'
+    Write-Host '║   [3] 卸载补丁（自动退出ZCode+还原）        ║'
     Write-Host '║   [4] 查看补丁状态                         ║'
     Write-Host '║   [0] 退出                                 ║'
     Write-Host '╚══════════════════════════════════════════╝' -ForegroundColor Cyan

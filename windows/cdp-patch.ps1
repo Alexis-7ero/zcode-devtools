@@ -72,12 +72,30 @@ if (-not (Test-Path $APPLY)) { throw "缺少共享变换器 $APPLY" }
 # ---------- 工具 ----------
 function Test-ZcodeRunning { [bool](Get-Process | Where-Object { $_.Name -match '^ZCode' }) }
 
+function Stop-ZcodeProcesses {
+    # 退出 UI 后仍可能有残留后台进程（crashpad/更新器/CLI 子进程），优雅关闭 → 强制结束
+    $procs = @(Get-Process | Where-Object { $_.Name -match '^ZCode' })
+    if ($procs.Count -eq 0) { return }
+    Write-Host ("[*] 检测到 ZCode 相关进程 {0} 个，先尝试优雅关闭 ..." -f $procs.Count) -ForegroundColor Yellow
+    $procs | ForEach-Object { try { $null = $_.CloseMainWindow() } catch {} }
+    Start-Sleep -Seconds 4
+    $left = @(Get-Process | Where-Object { $_.Name -match '^ZCode' })
+    if ($left.Count -gt 0) {
+        Write-Host "[*] 仍有 $($left.Count) 个进程，强制结束 ..."
+        $left | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+    }
+}
+
 function Wait-ZcodeExit {
     if (Test-ZcodeRunning) {
-        if (-not $WaitForExit) { throw "ZCode 正在运行。请完全退出（含托盘）后重试，或加参数 -WaitForExit" }
-        Write-Host '[*] 等待 ZCode 退出 ...' -ForegroundColor Yellow
-        while (Test-ZcodeRunning) { Start-Sleep -Seconds 3 }
+        if (-not $WaitForExit) { throw "ZCode 正在运行。请完全退出（含托盘）后重试；菜单方式会自动结束进程，或加参数 -WaitForExit" }
+        while (Test-ZcodeRunning) {
+            Stop-ZcodeProcesses
+            if (Test-ZcodeRunning) { Start-Sleep -Seconds 3 }
+        }
         Start-Sleep -Seconds 2
+        Write-Host '[OK] ZCode 已全部退出'
     }
 }
 

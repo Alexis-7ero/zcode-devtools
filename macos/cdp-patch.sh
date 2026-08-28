@@ -59,10 +59,16 @@ zcode_running() { pgrep -xq ZCode 2>/dev/null || pgrep -fq "ZCode.app" 2>/dev/nu
 
 wait_exit() {
   if zcode_running; then
-    [ -n "${WAIT_FLAG:-}" ] || die "ZCode 正在运行。请完全退出后重试，或加参数 --wait"
-    log "等待 ZCode 退出 ..."
-    while zcode_running; do sleep 2; done
+    [ -n "${WAIT_FLAG:-}" ] || die "ZCode 正在运行。请完全退出后重试；--wait 会自动结束残留进程"
+    log "正在退出 ZCode（优雅 → 强制）..."
+    osascript -e 'tell application "ZCode" to quit' >/dev/null 2>&1 || true
+    sleep 3
+    while zcode_running; do
+      pkill -x ZCode 2>/dev/null || true
+      sleep 2
+    done
     sleep 1
+    log "[OK] ZCode 已全部退出"
   fi
 }
 
