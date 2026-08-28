@@ -98,10 +98,10 @@ if (!fs.existsSync(mainIdx)) {
   process.exit(3);
 }
 
-// 幂等出口：已打补丁的 asar 直接跳过
+// 已打补丁 → 不允许直接重刷（重刷会在旧分支后叠加新分支），必须先卸载还原
 if (fs.readFileSync(mainIdx, 'utf8').includes(SENTINELS.mainExecutor)) {
-  console.log('[OK] 检测到已是补丁状态，无需重复应用（幂等跳过）');
-  process.exit(0);
+  console.error('[!] 目标 app.asar 已是补丁状态。请先执行卸载（Remove / 菜单[3]）还原原版，再重新安装。');
+  process.exit(4);
 }
 
 console.log('[*] 遍历 out/**/*.js 应用规则 ...');

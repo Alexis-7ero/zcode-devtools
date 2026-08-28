@@ -36,6 +36,18 @@ while ($true) {
     switch ($ch) {
         '1' {
             Write-Host ''
+            # 已打补丁 → 先自动卸载还原，再全新安装（避免旧分支残留）
+            $detected = "$ZCODE_APP_HINT"
+            $asarPath = $null
+            foreach ($cand in @('C:\Program Files\ZCode', "$env:ProgramFiles\ZCode", "$env:LOCALAPPDATA\Programs\ZCode")) {
+                if (Test-Path (Join-Path $cand 'resources\app.asar')) { $asarPath = Join-Path $cand 'resources\app.asar'; break }
+            }
+            $proc = Get-Process ZCode -ErrorAction SilentlyContinue | Where-Object Path | Select-Object -First 1
+            if ($proc) { $asarPath = Join-Path (Split-Path $proc.Path -Parent) 'resources\app.asar' }
+            if ($asarPath -and (Select-String -LiteralPath $asarPath -Pattern 'executeCdp' -Quiet) -and (Test-Path (Join-Path $PSScriptRoot 'backup\app.asar.original'))) {
+                Write-Host '[*] 检测到已安装补丁，先自动卸载还原 ...' -ForegroundColor Yellow
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove -WaitForExit
+            }
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Apply -WaitForExit -Force
             Pause-Back
         }

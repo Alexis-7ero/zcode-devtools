@@ -181,6 +181,7 @@ switch ($Action) {
 
         Write-Host '[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）...'
         node $APPLY "$ZCODE\resources\app.asar" (Join-Path $REPO 'rules.cjs') (Join-Path $env:TEMP ('zcode-win-apply-' + [IO.Path]::GetRandomFileName()))
+        if ($LASTEXITCODE -eq 4) { throw '目标已是补丁状态：请先执行 Remove（或菜单[3]）还原原版后再 Apply' }
         if ($LASTEXITCODE -ne 0) { throw 'asar 变换失败' }
 
         Write-Host '[*] 应用 Broker zcode.cjs ...'
