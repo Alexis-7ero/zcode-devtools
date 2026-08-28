@@ -9,65 +9,52 @@ if (-not $isAdmin) {
     exit
 }
 
-$Core = Join-Path $PSScriptRoot 'cdp-patch.ps1'
-if (-not (Test-Path $Core)) { Write-Host "缺少 cdp-patch.ps1" -ForegroundColor Red; Read-Host '回车退出'; exit 1 }
+$Root = $PSScriptRoot
+$Core = Join-Path $Root 'cdp-patch.ps1'
+$Reinstall = Join-Path $Root 'reinstall.ps1'
+if (-not (Test-Path $Core)) { Write-Host '缺少 cdp-patch.ps1' -ForegroundColor Red; Read-Host '回车退出'; exit 1 }
 
 function Show-Menu {
     Clear-Host
-    Write-Host '╔══════════════════════════════════════════╗' -ForegroundColor Cyan
-    Write-Host '║   ZCode DevTools  ·  CDP 补丁工具         ║' -ForegroundColor Cyan
-    Write-Host '╠══════════════════════════════════════════╣' -ForegroundColor Cyan
-    Write-Host '║   [1] 安装 / 重刷补丁（自动退出ZCode+进度）  ║'
-    Write-Host '║   [2] 备份当前原版文件                     ║'
-    Write-Host '║   [3] 卸载补丁（自动退出ZCode+还原）        ║'
-    Write-Host '║   [4] 查看补丁状态                         ║'
-    Write-Host '║   [0] 退出                                 ║'
-    Write-Host '╚══════════════════════════════════════════╝' -ForegroundColor Cyan
+    Write-Host '+------------------------------------------+' -ForegroundColor Cyan
+    Write-Host '|   ZCode DevTools  -  CDP Patch Tool      |' -ForegroundColor Cyan
+    Write-Host '+------------------------------------------+' -ForegroundColor Cyan
+    Write-Host '|   [1] 安装 / 重装补丁（自动提权+进度）   |'
+    Write-Host '|   [2] 备份当前原版文件                   |'
+    Write-Host '|   [3] 卸载补丁（自动结束ZCode+还原）     |'
+    Write-Host '|   [4] 查看补丁状态                       |'
+    Write-Host '|   [0] 退出                               |'
+    Write-Host '+------------------------------------------+' -ForegroundColor Cyan
 }
 
 function Pause-Back {
     Write-Host ''
-    Read-Host '操作完成，按回车返回菜单'
+    Read-Host '操作完成，按回车返回菜单' | Out-Null
 }
 
 while ($true) {
     Show-Menu
     $ch = Read-Host '请选择'
-    switch ($ch) {
-        '1' {
-            Write-Host ''
-            # 已打补丁 → 先自动卸载还原，再全新安装（避免旧分支残留）
-            $detected = "$ZCODE_APP_HINT"
-            $asarPath = $null
-            foreach ($cand in @('C:\Program Files\ZCode', "$env:ProgramFiles\ZCode", "$env:LOCALAPPDATA\Programs\ZCode")) {
-                if (Test-Path (Join-Path $cand 'resources\app.asar')) { $asarPath = Join-Path $cand 'resources\app.asar'; break }
+    try {
+        switch ($ch) {
+            '1' {
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Reinstall
             }
-            $proc = Get-Process ZCode -ErrorAction SilentlyContinue | Where-Object Path | Select-Object -First 1
-            if ($proc) { $asarPath = Join-Path (Split-Path $proc.Path -Parent) 'resources\app.asar' }
-            if ($asarPath -and (Select-String -LiteralPath $asarPath -Pattern 'executeCdp' -Quiet) -and (Test-Path (Join-Path $PSScriptRoot 'backup\app.asar.original'))) {
-                Write-Host '[*] 检测到已安装补丁，先自动卸载还原 ...' -ForegroundColor Yellow
+            '2' {
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Backup
+            }
+            '3' {
                 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove -WaitForExit
             }
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Apply -WaitForExit -Force
-            Pause-Back
+            '4' {
+                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Status
+            }
+            '0' { break }
+            default { }
         }
-        '2' {
-            Write-Host ''
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Backup
-            Pause-Back
-        }
-        '3' {
-            Write-Host ''
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove -WaitForExit
-            Pause-Back
-        }
-        '4' {
-            Write-Host ''
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Status
-            Pause-Back
-        }
-        '0' { break }
-        default { }
+    } catch {
+        Write-Host "[x] $_" -ForegroundColor Red
     }
     if ($ch -eq '0') { break }
+    Pause-Back
 }
