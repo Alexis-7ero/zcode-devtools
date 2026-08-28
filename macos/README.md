@@ -20,6 +20,7 @@ node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
 
 ## Usage
 
+The script auto-discovers ZCode.app (/Applications → ~/Applications → Spotlight). Custom location: `--app /path/ZCode.app` or `ZCODE_APP` env var.
 ```bash
 ./cdp-patch.sh Status            # show state
 ./cdp-patch.sh Apply --wait      # enable; waits for ZCode to exit, then finishes in ~1-2 min

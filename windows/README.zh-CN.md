@@ -12,6 +12,7 @@
 
 管理员 PowerShell：
 
+脚本会自动发现 ZCode 安装目录（运行中进程 → 注册表 → 常见路径依次探测）。装在非默认位置时加参数 `-ZcodePath 'D:AppsZCode'` 指定。
 ```powershell
 cd zcode-cdp-patch-windows
 

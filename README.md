@@ -15,6 +15,8 @@ Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built
 
 ## Quick start
 
+> Both scripts auto-discover the ZCode install dir. Custom location: `-ZcodePath` (Windows) / `--app` (macOS).
+
 ### Windows (admin PowerShell)
 
 ```powershell

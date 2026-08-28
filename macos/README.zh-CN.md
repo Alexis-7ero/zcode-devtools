@@ -20,6 +20,7 @@ node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
 
 ## 使用
 
+脚本会自动发现 ZCode.app（/Applications → ~/Applications → Spotlight 兜底）。自定义位置用 `--app /path/ZCode.app` 或环境变量 `ZCODE_APP`。
 ```bash
 ./cdp-patch.sh Status            # 查看状态
 ./cdp-patch.sh Apply --wait      # 启用补丁；自动等待 ZCode 退出，退出后约 1-2 分钟完成刷入

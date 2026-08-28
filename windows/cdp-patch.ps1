@@ -15,17 +15,58 @@ param(
     [ValidateSet('Apply', 'Remove', 'Status')]
     [string]$Action = 'Status',
     [switch]$WaitForExit,
-    [switch]$Force
+    [switch]$Force,
+    [string]$ZcodePath = ''              # 手动指定安装根目录（含 ZCode.exe 的目录）；缺省自动发现
 )
 
 $ErrorActionPreference = 'Stop'
-$ZCODE = 'C:\Program Files\ZCode'
 $ROOT  = $PSScriptRoot                 # windows\
 $REPO  = Split-Path $ROOT -Parent      # 仓库根
 $APPLY = Join-Path $REPO 'apply-asar.mjs'
 $BAK   = Join-Path $ROOT 'backup'
 
-if (-not (Test-Path "$ZCODE\resources\app.asar")) { throw "未找到 $ZCODE\resources\app.asar，请确认 ZCode 安装在默认路径" }
+# ---------- 第一步：自动发现 ZCode 安装目录 ----------
+function Resolve-ZcodeInstall {
+    function Valid([string]$d) { $d -and (Test-Path (Join-Path $d 'resources\app.asar')) }
+
+    # 0) 显式指定优先
+    if ($ZcodePath) {
+        if (-not (Valid $ZcodePath)) { throw "指定的 -ZcodePath 下未找到 resources\app.asar：$ZcodePath" }
+        return (Resolve-Path $ZcodePath).Path
+    }
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+
+    # 1) 正在运行的 ZCode 进程路径（最可靠）
+    Get-Process ZCode -ErrorAction SilentlyContinue | Where-Object Path | ForEach-Object {
+        $candidates.Add((Split-Path $_.Path -Parent))
+    }
+
+    # 2) 注册表卸载信息（DisplayIcon 指向 exe）
+    Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                     'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
+        Where-Object { $_.DisplayName -match '^ZCode' -and $_.DisplayIcon } |
+        ForEach-Object { $candidates.Add((Split-Path ($_.DisplayIcon -split ',')[0] -Parent)) }
+
+    # 3) 常见安装位置兜底
+    @("$env:ProgramFiles\ZCode",
+      "${env:ProgramFiles(x86)}\ZCode",
+      "$env:LOCALAPPDATA\Programs\ZCode",
+      'C:\Program Files\ZCode',
+      'D:\ZCode', 'E:\ZCode') | ForEach-Object { $candidates.Add($_) }
+
+    foreach ($c in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+        if (Valid $c) { return (Resolve-Path $c).Path }
+    }
+
+    throw @"
+未能在常见位置自动发现 ZCode 安装目录（需存在 resources\app.asar）。
+请用参数手动指定，例如：.\cdp-patch.ps1 Status -ZcodePath 'D:\Apps\ZCode'
+"@
+}
+
+$ZCODE = Resolve-ZcodeInstall
+Write-Host "[*] ZCode 安装目录：$ZCODE"
 if (-not (Test-Path $APPLY)) { throw "缺少共享变换器 $APPLY" }
 
 # ---------- 工具 ----------
@@ -66,6 +107,7 @@ switch ($Action) {
 
     'Status' {
         Write-Host '== ZCode Windows CDP 补丁状态 ==' -ForegroundColor Cyan
+        Write-Host ("安装目录   : " + $ZCODE)
         $run = Test-ZcodeRunning
         Write-Host ("ZCode 进程 : " + $(if ($run) { '运行中' } else { '未运行' }))
         $ver = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
@@ -84,7 +126,7 @@ switch ($Action) {
         $first = (Get-PluginTargets | Select-Object -First 1)
         if ($first) {
             $pOk = (Get-FileHash "$first\scripts\browser-client.mjs" -Algorithm SHA256).Hash -eq
-                   (Get-FileHash (Join-Path $REPO 'payload\browser-client.mjs') -Algorithm SHA256).Hash
+                   (Get-FileHash (Join-Path $REPO 'browser-client.mjs') -Algorithm SHA256).Hash
             Write-Host "  [$(if ($pOk) { 'Patched' } else { 'Clean' })] 插件(0.4.x)"
         }
 
@@ -102,7 +144,7 @@ switch ($Action) {
         foreach ($f in @('rules.cjs', 'zcode.cjs.gz', 'browser-client.mjs', 'api.json')) {
             if (-not (Test-Path (Join-Path $REPO $f))) { throw "缺少共享文件 $f" }
         }
-        $pluginPatched = Join-Path $REPO 'payload\browser-client.mjs'
+        $pluginPatched = Join-Path $REPO 'browser-client.mjs'
 
         # 首次：整包备份（Remove 的唯一依据）
         New-Item $BAK -ItemType Directory -Force | Out-Null

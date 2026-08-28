@@ -11,11 +11,6 @@
 # ============================================================
 set -euo pipefail
 
-APP="/Applications/ZCode.app"
-RES="$APP/Contents/Resources"
-BROKER="$RES/glm/zcode.cjs"
-PLUGIN_PKG="$RES/glm/packages/browser-use-plugin"
-CACHE_ROOT="$HOME/.zcode/cli/plugins/cache/zcode-plugins-official/browser-use"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PAYLOAD="$SCRIPT_DIR"
 BAK="$SCRIPT_DIR/backup"
@@ -25,14 +20,46 @@ log()  { echo "$LOG_TAG $*"; }
 warn() { echo "$LOG_TAG [!] $*" >&2; }
 die()  { echo "$LOG_TAG [x] $*" >&2; exit 1; }
 
-[ -d "$APP" ] || die "未找到 $APP，请确认 ZCode 已安装在 /Applications"
+# ---------- 参数预解析（须先于目录发现）----------
+ACTION="Status"; WAIT_FLAG=""; APP_ARG=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    Status|Apply|Remove) ACTION="$1" ;;
+    --wait) WAIT_FLAG="--wait" ;;
+    --app) APP_ARG="${2:-}"; shift ;;
+    *) warn "未知参数: $1"; exit 1 ;;
+  esac
+  shift
+done
+
+# ---------- 第一步：自动发现 ZCode.app ----------
+# 优先级：--app 参数 > 环境变量 ZCODE_APP > /Applications > ~/Applications > mdfind 兜底
+APP_CANDIDATES=()
+[ -n "$APP_ARG" ] && APP_CANDIDATES+=("$APP_ARG")
+[ -n "${ZCODE_APP:-}" ] && APP_CANDIDATES+=("$ZCODE_APP")
+APP_CANDIDATES+=("/Applications/ZCode.app" "$HOME/Applications/ZCode.app")
+
+APP=""
+for c in "${APP_CANDIDATES[@]}"; do
+  if [ -n "$c" ] && [ -f "$c/Contents/Resources/app.asar" ]; then APP="$c"; break; fi
+done
+if [ -z "$APP" ]; then
+  APP=$(mdfind "kMDItemCFBundleIdentifier == 'com.zcode*'" 2>/dev/null | head -1 || true)
+  [ -n "$APP" ] && [ -f "$APP/Contents/Resources/app.asar" ] || APP=""
+fi
+[ -n "$APP" ] || die "未自动发现 ZCode.app。请用 --app 指定，例如：./cdp-patch.sh Status --app ~/Apps/ZCode.app，或设环境变量 ZCODE_APP"
+
+RES="$APP/Contents/Resources"
+BROKER="$RES/glm/zcode.cjs"
+PLUGIN_PKG="$RES/glm/packages/browser-use-plugin"
+CACHE_ROOT="$HOME/.zcode/cli/plugins/cache/zcode-plugins-official/browser-use"
 [ -f "$RES/app.asar" ] || die "未找到 $RES/app.asar"
 
 zcode_running() { pgrep -xq ZCode 2>/dev/null || pgrep -fq "ZCode.app" 2>/dev/null; }
 
 wait_exit() {
   if zcode_running; then
-    [[ "${2:-}" == "--wait" ]] || die "ZCode 正在运行。请完全退出后重试，或加参数 --wait"
+    [ -n "${WAIT_FLAG:-}" ] || die "ZCode 正在运行。请完全退出后重试，或加参数 --wait"
     log "等待 ZCode 退出 ..."
     while zcode_running; do sleep 2; done
     sleep 1
@@ -75,8 +102,7 @@ status() {
 
 # ---- Apply ----
 apply() {
-  local wait_flag="${1:-}"
-  wait_exit apply "$wait_flag"
+  wait_exit
 
   local payload="$PAYLOAD" bro="$BAK"
   [ -f "$payload/rules.cjs" ] || die "缺少 $payload/rules.cjs"
@@ -125,7 +151,7 @@ apply() {
 
 # ---- Remove ----
 remove() {
-  wait_exit remove "${1:-}"
+  wait_exit
   [ -f "$BAK/app.asar.original" ] || die "未找到整包备份 $BAK/app.asar.original，无法安全还原"
 
   log "[*] 还原 app.asar（整包）..."
@@ -151,9 +177,10 @@ remove() {
   log "✅ 已停用，ZCode 回到出厂状态"
 }
 
-case "${1:-Status}" in
+
+case "$ACTION" in
   Status) status ;;
-  Apply)  shift || true; apply "${1:-}" ;;
-  Remove) shift || true; remove "${1:-}" ;;
-  *) echo "用法: $0 {Status|Apply [--wait]|Remove}"; exit 1 ;;
+  Apply)  apply ;;
+  Remove) remove ;;
+  *) echo "用法: $0 {Status|Apply [--wait] [--app <ZCode.app路径>]|Remove}"; exit 1 ;;
 esac

@@ -12,6 +12,7 @@ Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built
 
 ## Usage (admin PowerShell)
 
+The script auto-discovers the ZCode install dir (running process → registry → common paths). Non-default location: add `-ZcodePath 'D:AppsZCode'`.
 ```powershell
 cd zcode-devtools-windows
 
