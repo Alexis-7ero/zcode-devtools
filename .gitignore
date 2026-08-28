@@ -3,3 +3,6 @@ windows/backup/originals/zcode.cjs
 windows/backup/metadata.json
 # macOS：运行时生成的整包备份
 macos/backup/
+
+# 未压缩 Broker 中间产物
+payload/
