@@ -17,7 +17,7 @@ BROKER="$RES/glm/zcode.cjs"
 PLUGIN_PKG="$RES/glm/packages/browser-use-plugin"
 CACHE_ROOT="$HOME/.zcode/cli/plugins/cache/zcode-plugins-official/browser-use"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PAYLOAD="$SCRIPT_DIR/payload"
+PAYLOAD="$SCRIPT_DIR"
 BAK="$SCRIPT_DIR/backup"
 LOG_TAG="[cdp-patch]"
 
@@ -101,7 +101,7 @@ apply() {
 
   log "[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）..."
   command -v node >/dev/null || die "需要 Node.js（brew install node）"
-  node "$SCRIPT_DIR/apply-asar.mjs" "$RES/app.asar" "$payload/rules.cjs" "$(mktemp -d)/work"
+  node "$SCRIPT_DIR/../apply-asar.mjs" "$RES/app.asar" "$payload/rules.cjs" "$(mktemp -d)/work"
 
   log "[*] 应用 Broker zcode.cjs ..."
   gzip -dc "$payload/zcode.cjs.gz" > "$BROKER"

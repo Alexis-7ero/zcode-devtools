@@ -4,9 +4,9 @@
 
 [中文说明](README.zh-CN.md)
 
-Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser of **ZCode Desktop 3.9.2** (Windows x64). After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools.
+Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser of **ZCode Desktop 3.10.1** (Windows x64). After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools.
 
-> Idea credits: `Almost-Zhangsan/zcode-cdp-patch-3.7.3`. Re-ported from scratch for the 3.9.2 build — the patch reuses official internals (`ensureGuest` / `sendGuestCdpCommand`, Electron `webContents.debugger`) and adds no external connections. CDP events are buffered in memory per tab (cap 5000). macOS version: [`zcode-devtools-macos`](https://github.com/Alexis-7ero/zcode-devtools-macos).
+> Idea credits: `Almost-Zhangsan/zcode-cdp-patch-3.7.3`. Re-ported from scratch for the 3.10.1 build — the patch reuses official internals (`ensureGuest` / `sendGuestCdpCommand`, Electron `webContents.debugger`) and adds no external connections. CDP events are buffered in memory per tab (cap 5000). macOS version: [`zcode-devtools-macos`](https://github.com/Alexis-7ero/zcode-devtools-macos).
 
 > **Why a file patch?** Experiments proved that `NODE_OPTIONS` injection is stripped by Electron's allowlist in packaged apps (`Most NODE_OPTIONs are not supported in packaged apps`), so a zero-file-modification route is impossible. Meanwhile this build embeds **no** `ElectronAsarIntegrity` manifest, so the asar can be modified safely. See `cdp-hook-archive/` for the full post-mortem.
 
@@ -51,18 +51,14 @@ await tab.openDevTools();                            // open DevTools window
 ## Layout
 
 ```
-cdp-patch.ps1                 # single entry: Status / Apply / Remove
-payload/
-  main-index.js               # main-process executor (executeCdp dispatch)
-  main-chunk.js               # main schema (allow cdp)
-  host-chunk.js               # host schema
-  scheduler-index.js          # scheduler schema (3rd copy introduced in 3.9.2)
-  zcode.cjs.gz                # broker patch
-  browser-client.mjs          # plugin: tab.cdp / openDevTools (0.4.0 baseline)
-  api.json                    # plugin docs manifest
-backup/originals/             # pristine originals (sole source for Remove)
+cdp-patch.ps1                 # single entry: Status / Apply / Remove (rules-engine)
+../apply-asar.mjs             # shared rules-engine asar transformer
+../rules.cjs                  # shared transform rules
+../zcode.cjs.gz               # broker patch
+../browser-client.mjs         # plugin: tab.cdp / openDevTools (0.4.1 baseline)
+../api.json                   # plugin docs manifest
+backup/                       # full asar backup generated on first Apply (not committed)
 cdp-hook-archive/             # post-mortem of the dead NODE_OPTIONS injection approach
-SHA256SUMS.txt                # integrity checksums
 ```
 
 ## How it works
@@ -72,10 +68,10 @@ SHA256SUMS.txt                # integrity checksums
 | Main executor | asar `out/main/index.js` | adds a `method === "cdp"` branch to the dispatch chain, delegating to official `sendGuestCdpCommand` |
 | Main/Host/Scheduler schema | three asar chunks | method enum + discriminatedUnion entry for the cdp command (with optional `tabId`) |
 | Broker | `resources\glm\zcode.cjs` | same schema relaxation |
-| Model-side plugin | browser-use 0.4.0 cache | `Tab.get cdp()` returns a bare object to bypass the `hideUnknown` allowlist |
+| Model-side plugin | browser-use 0.4.x cache | `Tab.get cdp()` returns a bare object to bypass the `hideUnknown` allowlist |
 
 ## Notes
 
-- Targets **3.9.2** only (the script verifies the version). After a ZCode auto-update, run `Status` first — a re-port is usually needed.
+- Targets **3.10.1** only (the script verifies the version). After a ZCode auto-update, run `Status` first — a re-port is usually needed.
 - `Apply` is idempotent: re-running on a patched install is skipped (`-Force` overrides).
 - CDP is extremely powerful (read/write any page state, inject scripts). Use **only against authorized targets**.

@@ -1,8 +1,8 @@
 [English](README.md)
 
-# ZCode macOS CDP 补丁（3.9.2 · 一键开关）
+# ZCode macOS CDP 补丁（3.10.1 · 一键开关）
 
-在 **ZCode Desktop 3.9.2**（macOS）内嵌浏览器（IAB）的 Browser Use 通道上新增主机命令 `method: "cdp"`，模型可通过 `tab.cdp.*` / `tab.openDevTools()` 对当前标签页做 CDP 调试：任意 CDP 命令、事件流读取、断点/暂停/继续、打开 DevTools。Windows 版见姊妹仓库 `zcode-cdp-patch-windows`，已在 Windows 实机全链路验证通过）。Windows 版见姊妹仓库 [zcode-devtools-windows](https://github.com/Alexis-7ero/zcode-devtools-windows)。
+在 **ZCode Desktop 3.10.1**（macOS）内嵌浏览器（IAB）的 Browser Use 通道上新增主机命令 `method: "cdp"`，模型可通过 `tab.cdp.*` / `tab.openDevTools()` 对当前标签页做 CDP 调试：任意 CDP 命令、事件流读取、断点/暂停/继续、打开 DevTools。Windows 版见姊妹仓库 `zcode-cdp-patch-windows`，已在 Windows 实机全链路验证通过）。Windows 版见姊妹仓库 [zcode-devtools-windows](https://github.com/Alexis-7ero/zcode-devtools-windows)。
 
 > ⚠️ **未经实机验证声明**：作者无 macOS 设备，本目录由 Windows 实机验证过的变换规则 + 跨平台规则引擎编写，并在 Windows 侧对同源 asar 完成了全流程回归（变换命中、打包、幂等、直通均通过）。欢迎 mac 用户试用并反馈 Issue。
 
@@ -68,19 +68,17 @@ await tab.openDevTools();                            // 打开 DevTools 窗口
 ## 目录结构
 
 ```
-cdp-patch.sh                 # 唯一入口：Status / Apply / Remove
-apply-asar.mjs               # 规则引擎式 asar 变换器
-fuse-scan.mjs                # Electron fuses / asar 完整性预检
-payload/
-  rules.cjs                  # 变换规则（锚点自适应，zod 别名无关）
-  zcode.cjs.gz               # Broker 补丁
-  browser-client.mjs         # 插件：tab.cdp / openDevTools（0.4.0 基线）
-  api.json                   # 插件文档清单
-backup/                      # Apply 时生成的整包备份（不入库）
-SHA256SUMS.txt               # 完整性校验
+cdp-patch.sh                  # 唯一入口：Status / Apply / Remove
+../apply-asar.mjs             # 共享规则引擎式 asar 变换器
+../rules.cjs                  # 共享变换规则
+../fuse-scan.mjs              # Electron fuses / asar 完整性预检
+../zcode.cjs.gz               # Broker 补丁
+../browser-client.mjs         # 插件：tab.cdp / openDevTools（0.4.1 基线）
+../api.json                   # 插件文档清单
+backup/                       # Apply 时生成的整包备份（不入库）
 ```
 
 ## 注意
 
-- 仅适用于 **3.9.2**。ZCode 自动升级后请先 `Status` 查看。
+- 仅适用于 **3.10.1**。ZCode 自动升级后请先 `Status` 查看。
 - CDP 权限极高（读写页面任意状态、注入脚本），仅用于**授权范围内**的安全测试与调试。

@@ -16,9 +16,9 @@
     "tabCleanup": "IAB tabs persist for the current ZCode process until the model explicitly calls tab.close(), the user closes them, their window closes, or the process exits. finalize({ keep }) marks only listed tabs as deliverable or handoff; unlisted tabs remain open.",
     "playwright": "Playwright is a Tab API surface, never a backend type. playwright.domSnapshot() returns the Codex-compatible compact AI/ARIA tree and is the default locator ground truth. Fixed waiting is tab.playwright.waitForTimeout(timeoutMs), not a root Tab method. Unsupported members are hidden by the effective capability policy.",
     "locatorEvidence": "Construct locators only from the latest relevant domSnapshot. Never guess labels, accessible names, placeholders, selectors, or URL patterns. count()=0 requires a fresh snapshot and rebuild, not action-waiting; timeout/strict/parse failure forbids retrying the same locator.",
-    "evaluateSafety": "playwright.evaluate() and locator.evaluate() are read-only last resorts, not page-discovery tools. Prefer domSnapshot and locator reads. Never mutate DOM, navigate, fetch, or trigger actions. Possible side-effect in debug-evaluate means the current command was rejected, not that the browser crashed; do not retry an equivalent expression.",
+    "evaluate": "playwright.evaluate() and locator.evaluate() execute JavaScript in the page context and may change page state. Use them for page-side logic that cannot be expressed through the high-level locator API; use normal action methods when they communicate the intended interaction more clearly.",
     "screenshotOutput": "After choosing the visual branch, every screenshot call must be emitted in the same JS cell as an image block with nodeRepl.emitImage(await tab.screenshot()). Never use tab.screenshot() as the final expression or return its Uint8Array bytes directly.",
-    "operationTimeout": "Routine locator, URL/load-state wait, and read-only evaluate operations default to and are capped at 3000ms. Fixed waitForTimeout is separate; download event waiting may use up to 120000ms.",
+    "operationTimeout": "Routine locator, URL/load-state wait, and evaluate operations default to and are capped at 3000ms. Fixed waitForTimeout is separate; download event waiting may use up to 120000ms.",
     "navigationWait": "After every successful `tab.goto(url)`, explicitly call `await tab.playwright.waitForLoadState({ state: \"domcontentloaded\" })` before the first title, URL, or DOM observation. Keep this confirmation in the model-visible trajectory even when goto() has already settled the backend navigation. Routine URL/load-state waits remain capped at 3000ms. networkidle is rejected by the current IAB backend. expectNavigation without an expected URL can be satisfied by an already-loaded page; pass url when a new navigation must be proven.",
     "roleName": "getByRole(..., { name }) accepts a string or RegExp, including RegExp values created in the node_repl VM realm."
   },
@@ -149,18 +149,13 @@
           "kind": "method",
           "signature": "claimTab(tab: string | BrowserUserTabInfo): Promise<Tab>",
           "command": "claimTab",
-          "unsupportedByDefaultIn": [
-            "iab",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["iab", "cdp"]
         },
         {
           "name": "history",
           "kind": "method",
           "signature": "history(options: BrowserHistoryOptions): Promise<BrowserHistoryEntry[]>",
-          "unsupportedByDefaultIn": [
-            "iab"
-          ]
+          "unsupportedByDefaultIn": ["iab"]
         },
         {
           "name": "openTabs",
@@ -201,10 +196,7 @@
           "kind": "method",
           "signature": "finalize(options: FinalizeTabsOptions): Promise<void>",
           "command": "finalizeTabs",
-          "unsupportedByDefaultIn": [
-            "iab",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["iab", "cdp"]
         }
       ]
     },
@@ -296,30 +288,21 @@
           "signature": "finalize(options?: { deliverable?: boolean }): Promise<void>",
           "command": "finalize",
           "documented": false,
-          "unsupportedByDefaultIn": [
-            "iab",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["iab", "cdp"]
         },
         {
           "name": "markDeliverable",
           "kind": "method",
           "signature": "markDeliverable(): Promise<void>",
           "command": "markDeliverable",
-          "unsupportedByDefaultIn": [
-            "iab",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["iab", "cdp"]
         },
         {
           "name": "markHandoff",
           "kind": "method",
           "signature": "markHandoff(): Promise<void>",
           "command": "markHandoff",
-          "unsupportedByDefaultIn": [
-            "iab",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["iab", "cdp"]
         },
         {
           "name": "cua",
@@ -335,18 +318,6 @@
           "name": "playwright",
           "kind": "property",
           "signature": "playwright: PlaywrightAPI"
-        },
-        {
-          "name": "cdp",
-          "kind": "property",
-          "signature": "cdp: CdpAPI",
-          "description": "[CDP-PATCH] Chrome DevTools 协议调试入口"
-        },
-        {
-          "name": "openDevTools",
-          "kind": "method",
-          "signature": "openDevTools(): Promise<{ opened: boolean }>",
-          "description": "[CDP-PATCH] 打开该标签页的 DevTools"
         }
       ]
     },
@@ -357,30 +328,21 @@
           "kind": "method",
           "signature": "start(options?: BrowserRecordingOptions): Promise<BrowserRecordingJob>",
           "command": "recordingStart",
-          "unsupportedByDefaultIn": [
-            "extension",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["extension", "cdp"]
         },
         {
           "name": "status",
           "kind": "method",
           "signature": "status(recordingId: string, options?: { outputPath?: string }): Promise<BrowserRecordingJob>",
           "command": "recordingStatus",
-          "unsupportedByDefaultIn": [
-            "extension",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["extension", "cdp"]
         },
         {
           "name": "cancel",
           "kind": "method",
           "signature": "cancel(recordingId: string): Promise<BrowserRecordingJob>",
           "command": "recordingCancel",
-          "unsupportedByDefaultIn": [
-            "extension",
-            "cdp"
-          ]
+          "unsupportedByDefaultIn": ["extension", "cdp"]
         }
       ]
     },
@@ -464,9 +426,7 @@
             },
             {
               "signature": "waitForEvent(event: \"filechooser\", options?): Promise<PlaywrightFileChooser>",
-              "unsupportedByDefaultIn": [
-                "iab"
-              ]
+              "unsupportedByDefaultIn": ["iab"]
             }
           ]
         },
@@ -735,9 +695,7 @@
           "kind": "method",
           "signature": "setFiles(files, options?): Promise<void>",
           "command": "playwright",
-          "unsupportedByDefaultIn": [
-            "iab"
-          ]
+          "unsupportedByDefaultIn": ["iab"]
         }
       ]
     },
@@ -785,9 +743,7 @@
           "name": "downloadMedia",
           "kind": "method",
           "signature": "downloadMedia(options: CuaDownloadMediaOptions): Promise<void>",
-          "unsupportedByDefaultIn": [
-            "iab"
-          ],
+          "unsupportedByDefaultIn": ["iab"],
           "documented": false
         },
         {
@@ -833,9 +789,7 @@
           "name": "downloadMedia",
           "kind": "method",
           "signature": "downloadMedia(options: DomDownloadMediaOptions): Promise<void>",
-          "unsupportedByDefaultIn": [
-            "iab"
-          ],
+          "unsupportedByDefaultIn": ["iab"],
           "documented": false
         },
         {
@@ -923,82 +877,6 @@
           "name": "dismiss",
           "kind": "method",
           "signature": "dismiss(): Promise<void>"
-        }
-      ]
-    },
-    "CdpAPI": {
-      "members": [
-        {
-          "name": "send",
-          "kind": "method",
-          "signature": "send(cdpMethod: string, params?: object): Promise<unknown>",
-          "description": "[CDP-PATCH] 发送任意 CDP 命令"
-        },
-        {
-          "name": "events",
-          "kind": "method",
-          "signature": "events(options?: { clear?: boolean; limit?: number }): Promise<{ events; count; totalBuffered }>",
-          "description": "[CDP-PATCH] 读取缓冲的 CDP 事件"
-        },
-        {
-          "name": "enableDebugger",
-          "kind": "method",
-          "signature": "enableDebugger(): Promise<boolean>",
-          "description": "[CDP-PATCH] Debugger.enable 并允许暂停"
-        },
-        {
-          "name": "evaluate",
-          "kind": "method",
-          "signature": "evaluate(expression: string, options?): Promise<unknown>",
-          "description": "[CDP-PATCH] Runtime.evaluate"
-        },
-        {
-          "name": "getCallStack",
-          "kind": "method",
-          "signature": "getCallStack(): Promise<object | null>",
-          "description": "[CDP-PATCH] 取最近一次 Debugger.paused"
-        },
-        {
-          "name": "resume",
-          "kind": "method",
-          "signature": "resume(): Promise<unknown>",
-          "description": "[CDP-PATCH] 继续执行"
-        },
-        {
-          "name": "pause",
-          "kind": "method",
-          "signature": "pause(): Promise<unknown>",
-          "description": "[CDP-PATCH] 暂停执行"
-        },
-        {
-          "name": "setBreakpointByUrl",
-          "kind": "method",
-          "signature": "setBreakpointByUrl(options): Promise<unknown>",
-          "description": "[CDP-PATCH] 按 URL 下断点"
-        },
-        {
-          "name": "removeBreakpoint",
-          "kind": "method",
-          "signature": "removeBreakpoint(breakpointId: string): Promise<unknown>",
-          "description": "[CDP-PATCH] 删除断点"
-        },
-        {
-          "name": "networkEnable",
-          "kind": "method",
-          "signature": "networkEnable(): Promise<unknown>",
-          "description": "[CDP-PATCH] Network.enable"
-        },
-        {
-          "name": "runtimeEnable",
-          "kind": "method",
-          "signature": "runtimeEnable(): Promise<unknown>",
-          "description": "[CDP-PATCH] Runtime.enable"
-        },
-        {
-          "name": "openDevTools",
-          "kind": "method",
-          "signature": "openDevTools(): Promise<{ opened: boolean }>",
-          "description": "[CDP-PATCH] 打开 DevTools 窗口"
         }
       ]
     }

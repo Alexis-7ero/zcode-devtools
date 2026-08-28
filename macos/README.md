@@ -2,7 +2,7 @@
 
 [中文说明](README.zh-CN.md)
 
-Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser of **ZCode Desktop 3.9.2** (macOS). After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools. Windows version (verified end-to-end on a real machine): [`zcode-devtools-windows`](https://github.com/Alexis-7ero/zcode-devtools-windows).
+Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser of **ZCode Desktop 3.10.1** (macOS). After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools. Windows version (verified end-to-end on a real machine): [`zcode-devtools-windows`](https://github.com/Alexis-7ero/zcode-devtools-windows).
 
 > ⚠️ **Untested on a real Mac** — the author has no macOS device. This port is built from the Windows-verified transform rules plus a cross-platform rules engine, and was regression-tested on Windows against the same-origin asar (transform hits, packing, idempotency, passthrough all pass). Mac users are welcome to try and file issues with the reported output.
 
@@ -68,19 +68,17 @@ await tab.openDevTools();                            // open DevTools window
 ## Layout
 
 ```
-cdp-patch.sh                 # single entry: Status / Apply / Remove
-apply-asar.mjs               # rules-engine asar transformer
-fuse-scan.mjs                # Electron fuses / asar integrity preflight
-payload/
-  rules.cjs                  # transform rules (anchor-adaptive, zod-alias agnostic)
-  zcode.cjs.gz               # broker patch
-  browser-client.mjs         # plugin: tab.cdp / openDevTools (0.4.0 baseline)
-  api.json                   # plugin docs manifest
-backup/                      # full backup generated on first Apply (not committed)
-SHA256SUMS.txt               # integrity checksums
+cdp-patch.sh                  # single entry: Status / Apply / Remove
+../apply-asar.mjs             # shared rules-engine asar transformer
+../rules.cjs                  # shared transform rules
+../fuse-scan.mjs              # Electron fuses / asar integrity preflight
+../zcode.cjs.gz               # broker patch
+../browser-client.mjs         # plugin: tab.cdp / openDevTools (0.4.1 baseline)
+../api.json                   # plugin docs manifest
+backup/                       # full backup generated on first Apply (not committed)
 ```
 
 ## Notes
 
-- Targets **3.9.2** only. After a ZCode auto-update, run `Status` first.
+- Targets **3.10.1** only. After a ZCode auto-update, run `Status` first.
 - CDP is extremely powerful (read/write any page state, inject scripts). Use **only against authorized targets**.

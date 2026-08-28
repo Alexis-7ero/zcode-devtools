@@ -592,8 +592,8 @@ var FALLBACK_DOCUMENTATION = [
   "A snapshot-proven heading or visible text does not need a `link` or `button` role to be clicked. Do not replace a snapshot-proven `heading` with a guessed `link` role. When user intent authorizes navigation and the actual target is unique, click it directly.",
   // 修复原因：两套 tab 查询分开返回时，模型会在第一套结果后重新决策并跳过 popup 来源。
   "Use at most one state-changing action per observation cycle. An unchanged source-tab URL does not prove the click failed. Judge an action by whether its expected effect appeared, not by whether `browser.tabs.list()` is non-empty. An existing source tab or unrelated controlled tab is not an action effect. When an action may open a popup/new tab and the source tab does not show the expected effect, read `browser.tabs.list()` and `browser.user.openTabs()` unconditionally in the same observation cell. Prefer `const [controlledTabs, userTabs] = await Promise.all([browser.tabs.list(), browser.user.openTabs()]);`. Return `{ controlledTabs, userTabs }` as that cell's final result so the model makes one decision from both lists. Do not return the controlled list first or decide whether to query user tabs from its contents.",
-  "playwright.evaluate() and locator.evaluate() are read-only last resorts. Prefer domSnapshot and locator reads; never mutate DOM, navigate, fetch, or trigger actions. Chromium may reject calls with `Possible side-effect in debug-evaluate`; do not retry an equivalent expression, and return to snapshot/locator reads instead.",
-  "Routine locator, URL/load-state wait, and read-only evaluate operations default to and are capped at 3000ms; fixed tab.playwright.waitForTimeout(ms) is separate."
+  "playwright.evaluate() and locator.evaluate() execute JavaScript in the page context and may change page state. Use them for page-side logic that cannot be expressed through the high-level locator API; use normal action methods when they communicate the intended interaction more clearly.",
+  "Routine locator, URL/load-state wait, and evaluate operations default to and are capped at 3000ms; fixed tab.playwright.waitForTimeout(ms) is separate."
 ].join("\n");
 function readJson(path) {
   if (!existsSync2(path))
@@ -1898,20 +1898,11 @@ var Tab = class {
       },
       async enableDebugger() {
         await self.cdp.send("Debugger.enable", {});
-        try {
-          await self.cdp.send("Debugger.setSkipAllPauses", { skip: false });
-        } catch {}
+        try { await self.cdp.send("Debugger.setSkipAllPauses", { skip: false }); } catch {}
         return true;
       },
       async evaluate(expression, options = {}) {
-        return self.cdp.send("Runtime.evaluate", {
-          expression,
-          returnByValue: true,
-          awaitPromise: true,
-          userGesture: true,
-          includeCommandLineAPI: true,
-          ...options
-        });
+        return self.cdp.send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true, userGesture: true, includeCommandLineAPI: true, ...options });
       },
       async getCallStack() {
         const { events } = await self.cdp.events({ clear: false, limit: 500 });
@@ -1920,31 +1911,19 @@ var Tab = class {
         }
         return null;
       },
-      async resume() {
-        return self.cdp.send("Debugger.resume", {});
-      },
-      async pause() {
-        return self.cdp.send("Debugger.pause", {});
-      },
-      async setBreakpointByUrl(options) {
-        return self.cdp.send("Debugger.setBreakpointByUrl", options);
-      },
-      async removeBreakpoint(breakpointId) {
-        return self.cdp.send("Debugger.removeBreakpoint", breakpointId);
-      },
-      async networkEnable() {
-        return self.cdp.send("Network.enable", {});
-      },
-      async runtimeEnable() {
-        return self.cdp.send("Runtime.enable", {});
-      },
+      async resume() { return self.cdp.send("Debugger.resume", {}); },
+      async pause() { return self.cdp.send("Debugger.pause", {}); },
+      async setBreakpointByUrl(options) { return self.cdp.send("Debugger.setBreakpointByUrl", options); },
+      async removeBreakpoint(breakpointId) { return self.cdp.send("Debugger.removeBreakpoint", breakpointId); },
+      async networkEnable() { return self.cdp.send("Network.enable", {}); },
+      async runtimeEnable() { return self.cdp.send("Runtime.enable", {}); },
       async openDevTools() {
         const command = { method: "cdp", op: "openDevTools" };
         return (expectOk(command, await runCdp({ op: "openDevTools" })).value) ?? { opened: true };
       }
     };
   }
-  /** [cdp-patch] 打开内置浏览器当前标签页的 DevTools 面板 */
+  /** [cdp-patch] 打开当前标签页的 DevTools 面板 */
   async openDevTools() {
     const command = { method: "cdp", op: "openDevTools" };
     return (expectOk(command, await this.run(command)).value) ?? { opened: true };
