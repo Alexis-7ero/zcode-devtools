@@ -26,6 +26,9 @@ cd windows
 .\cdp-patch.ps1 Remove               # disable patch, restore originals
 ```
 
+Windows users can also just double-click `windows/ZCodeCDPTool.exe` — an interactive menu (① install ② backup ③ remove ④ status) with a progress bar. `cdp-menu.ps1` / `launcher.cs` are the menu source, rebuildable with the system csc.
+
+
 ### macOS
 
 ```bash

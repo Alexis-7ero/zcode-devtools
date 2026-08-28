@@ -15,11 +15,27 @@ import { pathToFileURL } from 'node:url';
 
 const [, , asarPath, rulesPath, workDir] = process.argv;
 if (!asarPath || !rulesPath || !workDir) {
+  if (/[.]original([.][a-z0-9]+)?$/i.test(asarPath)) {
+    console.error('[x] 拒绝执行：目标路径是备份文件（*.original）。请指向实际安装的 app.asar。');
+    process.exit(2);
+  }
   console.error('用法: node apply-asar.mjs <app.asar> <rules.cjs> <工作目录>');
   process.exit(2);
 }
 
 const { transform } = await import(pathToFileURL(path.resolve(rulesPath)).href);
+
+// 进度打点：TTY 时画进度条，重定向时打 PROGRESS 行（供菜单读取）
+const STAGES = { extract: [5, 35], rules: [38, 48], npm: [50, 62], pack: [64, 90], replace: [93, 99] };
+function PROGRESS(stage, label) {
+  const [from, to] = STAGES[stage] || [0, 100];
+  const cur = stage === 'done' ? 100 : from;
+  if (process.stdout.isTTY) {
+    process.stdout.write('\r[' + '#'.repeat(Math.round(cur / 5)).padEnd(20, '-') + '] ' + String(cur).padStart(3) + '%  ' + (label || ''));
+  } else {
+    console.log('PROGRESS ' + cur + ' ' + (label || ''));
+  }
+}
 
 // 哨兵：变换成功的判定标记
 const SENTINELS = {
@@ -64,6 +80,7 @@ if (fs.existsSync(unpackedSibling)) {
   } catch (_) {}
 }
 
+PROGRESS('extract','解包中');
 console.log('[*] 解包 asar ...');
 installAsar(workDir);
 try {
@@ -126,6 +143,7 @@ if (fatal) {
   process.exit(3);
 }
 
+PROGRESS('npm','准备打包依赖');
 console.log('[*] 重新打包（原生模块保持 unpacked）...');
 fs.writeFileSync(path.join(workDir, 'pack.cjs'), `
 const { createPackageWithOptions } = require("@electron/asar");
@@ -140,12 +158,14 @@ try {
   console.error('[!] npm 安装 @electron/asar 失败（需要 Node.js + npm）: ' + e.message);
   process.exit(3);
 }
+PROGRESS('pack','重新打包中');
 execFileSync(process.execPath, [path.join(workDir, 'pack.cjs'), X, PACKED], { cwd: workDir, stdio: 'inherit' });
 if (!fs.existsSync(PACKED) || fs.statSync(PACKED).size < 200 * 1024 * 1024) {
   console.error('[!] 打包产物异常（<200MB），中止替换');
   process.exit(3);
 }
 
+PROGRESS('replace','替换目标文件');
 fs.copyFileSync(PACKED, asarPath);
 console.log(`[OK] 已替换 ${asarPath}（变更 ${filesChanged} 个 JS）`);
 

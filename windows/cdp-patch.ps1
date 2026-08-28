@@ -12,7 +12,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('Apply', 'Remove', 'Status')]
+    [ValidateSet('Apply', 'Remove', 'Status', 'Backup')]
     [string]$Action = 'Status',
     [switch]$WaitForExit,
     [switch]$Force,
@@ -176,6 +176,25 @@ switch ($Action) {
 
         Write-Host ''
         Write-Host '✅ 补丁已启用。启动 ZCode 新开对话验证：tab.cdp.evaluate("1+1") / tab.openDevTools()'
+    }
+
+    'Backup' {
+        New-Item $BAK -ItemType Directory -Force | Out-Null
+        if (-not (Test-Path "$BAK\app.asar.original")) {
+            Copy-Item "$ZCODE\resources\app.asar" "$BAK\app.asar.original"
+            Write-Host '[OK] app.asar 已备份'
+        } else { Write-Host '[跳过] app.asar 备份已存在' }
+        if (-not (Test-Path "$BAK\zcode.cjs.original")) {
+            Copy-Item "$ZCODE\resources\glm\zcode.cjs" "$BAK\zcode.cjs.original"
+            Write-Host '[OK] Broker 已备份'
+        }
+        $fp = (Get-PluginTargets | Select-Object -First 1)
+        if ($fp -and -not (Test-Path "$BAK\browser-client.mjs.original")) {
+            Copy-Item "$fp\scripts\browser-client.mjs" "$BAK\browser-client.mjs.original"
+            Copy-Item "$fp\docs\api.json" "$BAK\api.json.original"
+            Write-Host '[OK] 插件已备份'
+        }
+        Write-Host '✅ 备份完成（backup 目录）'
     }
 
     'Remove' {

@@ -24,6 +24,9 @@ cd windows
 .\cdp-patch.ps1 Remove               # 停用补丁，还原原版
 ```
 
+Windows 用户也可以直接双击 `windows/ZCodeCDPTool.exe` —— 交互式菜单（① 安装 ② 备份 ③ 卸载 ④ 状态），自带进度条。`cdp-menu.ps1` / `launcher.cs` 为菜单源码，可用系统自带 csc 重新编译。
+
+
 ### macOS
 
 ```bash
