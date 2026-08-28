@@ -22,6 +22,8 @@ cd zcode-cdp-patch-windows
 .\cdp-patch.ps1 Apply -Force         # 强制重刷（混合状态时）
 ```
 
+双击 `ZCodeCDPTool.exe` 进入交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态），自带进度条。
+
 启用后**新开对话**验证：
 
 ```text
