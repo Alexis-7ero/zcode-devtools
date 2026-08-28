@@ -22,6 +22,8 @@ cd zcode-devtools-windows
 .\cdp-patch.ps1 Apply -Force         # force re-apply (mixed state)
 ```
 
+One-click reinstall: double-click `reinstall.cmd` (or menu [1]) — it quits ZCode, restores the pristine baseline, re-hooks and self-checks in a single run.
+
 Double-click `ZCodeCDPTool.exe` for an interactive menu (① install ② backup ③ remove ④ status) with a progress bar.
 
 After enabling, **start a new conversation** and verify:

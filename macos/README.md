@@ -20,6 +20,7 @@ node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
 
 ## Usage
 
+Double-click **Menu.command** in Finder — interactive menu (① install ② backup ③ remove ④ status). Install auto-quits ZCode, restores the pristine baseline, re-hooks via the rules engine, re-signs ad-hoc and self-checks. Single-action wrappers: `Install.command`, `Remove.command`, `Status.command`.
 The script auto-discovers ZCode.app (/Applications → ~/Applications → Spotlight). Custom location: `--app /path/ZCode.app` or `ZCODE_APP` env var.
 ```bash
 ./cdp-patch.sh Status            # show state

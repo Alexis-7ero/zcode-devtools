@@ -20,6 +20,7 @@ node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
 
 ## 使用
 
+双击 **Menu.command** 打开交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态）——安装会自动退出 ZCode、还原纯净原版、规则引擎重新 hook、ad-hoc 重签名并自检。单独入口：`Install.command`、`Remove.command`、`Status.command`。
 脚本会自动发现 ZCode.app（/Applications → ~/Applications → Spotlight 兜底）。自定义位置用 `--app /path/ZCode.app` 或环境变量 `ZCODE_APP`。
 ```bash
 ./cdp-patch.sh Status            # 查看状态

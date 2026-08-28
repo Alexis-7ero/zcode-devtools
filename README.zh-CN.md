@@ -29,13 +29,12 @@ Windows 用户也可以直接双击 `windows/ZCodeCDPTool.exe` —— 交互式�
 
 ### macOS
 
+双击 `macos/Menu.command` 进入交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态）——会自动退出 ZCode、还原纯净原版、规则引擎重新 hook、ad-hoc 重签名并自检。也有单独入口：`Install.command` / `Remove.command` / `Status.command`。
+
+首次使用前先体检：
+
 ```bash
-chmod +x cdp-patch.sh
-node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # 前置体检：fuses / 完整性清单
-cd macos
-./cdp-patch.sh Status
-./cdp-patch.sh Apply --wait        # 启用补丁；自动等待 ZCode 退出，退出后约 1-2 分钟完成刷入
-./cdp-patch.sh Remove              # 停用补丁，整包还原
+node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # 检查 fuses / 完整性清单
 ```
 
 ## 验证（启用后新开对话）

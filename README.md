@@ -31,13 +31,12 @@ Windows users can also just double-click `windows/ZCodeCDPTool.exe` — an inter
 
 ### macOS
 
+Double-click `macos/Menu.command` (interactive menu: ① install ② backup ③ remove ④ status) — it auto-quits ZCode, restores the pristine baseline, re-hooks via the rules engine, re-signs ad-hoc, and self-checks. Single-action wrappers: `Install.command` / `Remove.command` / `Status.command`.
+
+Preflight before first use:
+
 ```bash
-chmod +x cdp-patch.sh
-node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # preflight: check fuses / integrity manifest
-cd macos
-./cdp-patch.sh Status
-./cdp-patch.sh Apply --wait        # enable; waits for ZCode to exit, then finishes in ~1-2 min
-./cdp-patch.sh Remove              # disable, full-file restore
+node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # check fuses / integrity manifest
 ```
 
 ## Verify (new conversation after enabling)

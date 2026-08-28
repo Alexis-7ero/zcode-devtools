@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PAYLOAD="$SCRIPT_DIR"
+PAYLOAD="$(cd "$SCRIPT_DIR/.." && pwd)"
 BAK="$SCRIPT_DIR/backup"
 LOG_TAG="[cdp-patch]"
 
@@ -83,6 +83,21 @@ plugin_targets() {
   printf '%s\n' "${list[@]}"
 }
 
+backup_all() {
+  mkdir -p "$BAK"
+  if [ ! -f "$BAK/app.asar.original" ]; then
+    log "[*] 首次备份原版 app.asar（约 300MB，一次性）..."
+    cp "$RES/app.asar" "$BAK/app.asar.original"
+  fi
+  [ -f "$BAK/zcode.cjs.original" ] || cp "$BROKER" "$BAK/zcode.cjs.original"
+  local first
+  first="$(plugin_targets | head -1)"
+  if [ -n "$first" ]; then
+    [ -f "$BAK/browser-client.mjs.original" ] || cp "$first/scripts/browser-client.mjs" "$BAK/browser-client.mjs.original"
+    [ -f "$BAK/api.json.original" ] || cp "$first/docs/api.json" "$BAK/api.json.original"
+  fi
+}
+
 # ---- Status ----
 status() {
   echo "== ZCode macOS CDP 补丁状态 =="
@@ -115,21 +130,8 @@ apply() {
   [ -f "$payload/zcode.cjs.gz" ] || die "缺少 $payload/zcode.cjs.gz"
   [ -f "$payload/browser-client.mjs" ] || die "缺少 $payload/browser-client.mjs"
 
-  # 首次：整包备份原版 asar（Remove 的还原依据）
-  mkdir -p "$bro"
-  if [ ! -f "$bro/app.asar.original" ]; then
-    log "[*] 首次备份原版 app.asar（约 300MB，一次性）..."
-    cp "$RES/app.asar" "$bro/app.asar.original"
-  fi
-  if [ ! -f "$bro/zcode.cjs.original" ]; then
-    cp "$BROKER" "$bro/zcode.cjs.original"
-  fi
-  local first_plugin
-  first_plugin="$(plugin_targets | head -1)"
-  if [ -n "$first_plugin" ] && [ ! -f "$bro/browser-client.mjs.original" ]; then
-    cp "$first_plugin/scripts/browser-client.mjs" "$bro/browser-client.mjs.original"
-    cp "$first_plugin/docs/api.json" "$bro/api.json.original"
-  fi
+  backup_all
+
 
   log "[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）..."
   command -v node >/dev/null || die "需要 Node.js（brew install node）"
@@ -187,6 +189,7 @@ remove() {
 case "$ACTION" in
   Status) status ;;
   Apply)  apply ;;
+  Backup) backup_all && log "✅ 备份完成（$BAK）" ;;
   Remove) remove ;;
   *) echo "用法: $0 {Status|Apply [--wait] [--app <ZCode.app路径>]|Remove}"; exit 1 ;;
 esac

@@ -22,6 +22,8 @@ cd zcode-cdp-patch-windows
 .\cdp-patch.ps1 Apply -Force         # 强制重刷（混合状态时）
 ```
 
+一键重装：双击 `reinstall.cmd`（或菜单 [1]）——自动结束 ZCode、还原纯净原版、重新 hook 并自检，一步到位。
+
 双击 `ZCodeCDPTool.exe` 进入交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态），自带进度条。
 
 启用后**新开对话**验证：
