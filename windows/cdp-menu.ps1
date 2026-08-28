@@ -46,7 +46,7 @@ while ($true) {
         }
         '3' {
             Write-Host ''
-            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove -WaitForExit
             Pause-Back
         }
         '4' {
