@@ -7,3 +7,16 @@ payload/
 windows/payload/
 # macOS 运行时备份
 macos/backup/
+
+# WorkBuddy module: local build/test artifacts
+workbuddy/node_modules/
+workbuddy/package-lock.json
+workbuddy/wb-patch-work*/
+workbuddy/wb-*.asar
+workbuddy/wb-sandbox*/
+workbuddy/wb-test-install/
+workbuddy/wb-dryrun/
+workbuddy/install-log*.txt
+workbuddy/ctx*.txt
+workbuddy/test-shot*.png
+workbuddy/csc-tmp.exe

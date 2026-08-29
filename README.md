@@ -39,6 +39,10 @@ Preflight before first use:
 node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # check fuses / integrity manifest
 ```
 
+## WorkBuddy module
+
+The [`workbuddy/`](workbuddy/) directory hosts an independent module for **Tencent WorkBuddy 5.4.4**: it injects a native `browser_cdp` builtin tool (eval / screenshot / network / events / raw CDP / DevTools) for the agent built-in browser, unlocks the hidden right-click Inspect, and turns the official CDP port always-on. Double-click `workbuddy/WorkBuddyCDPTool.exe` to install; `wb-patch.cmd remove` restores the originals. Full docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md).
+
 ## Verify (new conversation after enabling)
 
 ```text

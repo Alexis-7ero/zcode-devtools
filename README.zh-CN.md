@@ -12,6 +12,7 @@
 |------|------|------|
 | Windows x64 | [`windows/cdp-patch.ps1`](windows/) — 说明：[中文](windows/README.zh-CN.md) / [English](windows/README.md) | ✅ 实机验证通过 |
 | macOS | [`macos/cdp-patch.sh`](macos/) — 说明：[中文](macos/README.zh-CN.md) / [English](macos/README.md) | ⚠️ 未经实机验证，欢迎反馈 |
+| **WorkBuddy 5.4.4** (Windows x64) | [`workbuddy/WorkBuddyCDPTool.exe`](workbuddy/) — 说明：[中文](workbuddy/README.zh-CN.md) / [English](workbuddy/README.md) | ✅ 实机验证通过 |
 
 ## 快速开始
 
@@ -36,6 +37,10 @@ Windows 用户也可以直接双击 `windows/ZCodeCDPTool.exe` —— 交互式�
 ```bash
 node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # 检查 fuses / 完整性清单
 ```
+
+## WorkBuddy 模块
+
+[`workbuddy/`](workbuddy/) 目录是独立的 **腾讯 WorkBuddy 5.4.4** 模块：向 agent 注入原生 `browser_cdp` 内置工具（eval / 截图 / 抓网络 / CDP 事件 / 任意 CDP / DevTools），解锁内置浏览器隐藏的右键 Inspect，并把官方 CDP 端口改为默认常开。双击 `workbuddy/WorkBuddyCDPTool.exe` 安装；`wb-patch.cmd remove` 一键还原。详细文档：[中文](workbuddy/README.zh-CN.md) / [English](workbuddy/README.md)。
 
 ## 验证（启用后新开对话）
 

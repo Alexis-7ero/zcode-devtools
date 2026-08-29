@@ -1,0 +1,8 @@
+{
+  "name": "workbuddy-cdp-bridge",
+  "private": true,
+  "description": "Local build dependency for wb-patch.cmd (@electron/asar). Install with: npm install",
+  "dependencies": {
+    "@electron/asar": "4.3.0"
+  }
+}
