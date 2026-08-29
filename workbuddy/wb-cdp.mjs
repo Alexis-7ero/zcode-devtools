@@ -6,22 +6,28 @@
  * 或直接运行 wb-start.cmd）。之后本工具即可列出/驱动其内置浏览器预览面板。
  *
  * 用法：
- *   node wb-cdp.mjs list                                  列出全部 CDP 目标
- *   node wb-cdp.mjs list --url baidu                      按关键字过滤目标
- *   node wb-cdp.mjs eval --url baidu --expr "1+1"         在匹配目标里执行 JS
- *   node wb-cdp.mjs eval --url baidu --expr "location.href" --await   --expr 为 Promise 时等待
- *   node wb-cdp.mjs nav  --url baidu --to "https://example.com"       目标页导航
+ *   node wb-cdp.mjs wait [--timeout 240]                        等待 CDP 端点就绪（进度条）
+ *   node wb-cdp.mjs list [--url baidu]                          列出全部 CDP 目标
+ *   node wb-cdp.mjs eval --url baidu --expr "1+1" [--await]     页内执行 JS
+ *   node wb-cdp.mjs nav  --url baidu --to "https://..."         导航（等待加载完成）
+ *   node wb-cdp.mjs net  --url baidu [--seconds 6] [--no-reload] 网络监听（默认自动刷新捕获）
+ *   node wb-cdp.mjs shot --url baidu [--out shot.png]           整页截图
+ *   node wb-cdp.mjs devtools --url baidu [--open]               打开该目标的 DevTools 页面
  *
  * 供 WorkBuddy 的 agent 通过 shell 调用（等价于 ZCode 的 tab.cdp.* 能力）。
  */
+import fs from 'node:fs';
+import { execSync } from 'node:child_process';
+
 const args = process.argv.slice(2);
 const port = process.env.WORKBUDDY_REMOTE_DEBUGGING_PORT || '9222';
 const base = `http://127.0.0.1:${port}`;
 
-function argOf(name, def = '') {
+const argOf = (name, def = '') => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : def;
-}
+};
+const has = (name) => args.includes(name);
 const cmd = (args[0] || 'list').toLowerCase();
 const urlSub = (argOf('--url') || '').toLowerCase();
 const expr = argOf('--expr', '1+1');
@@ -80,13 +86,82 @@ async function withTarget(t, fn) {
   try {
     let id = 0;
     await cdp(ws, ++id, 'Runtime.enable');
-    return await fn(ws, id);
+    return await fn(ws, () => ++id);
   } finally {
     try { ws.close(); } catch {}
   }
 }
 
+/* ---------- 进度条 ---------- */
+function bar(pct, label, lastLenRef) {
+  const b = '[' + '#'.repeat(Math.round(pct / 3.4)).padEnd(30, '·') + ']';
+  const line = `${b} ${String(pct).padStart(3)}%  ${label}`;
+  if (process.stdout.isTTY) {
+    process.stdout.write('\r' + line + ' '.repeat(Math.max(0, lastLenRef.v - line.length)));
+    lastLenRef.v = line.length;
+  } else {
+    console.log(`PROGRESS ${pct} ${label}`);
+  }
+}
+
+/* ---------- 等待 CDP 端点就绪（WorkBuddy 冷启动约 1-2 分钟）---------- */
+async function waitReady(timeoutSec) {
+  const t0 = Date.now();
+  const ref = { v: 0 };
+  for (;;) {
+    const elapsed = Math.round((Date.now() - t0) / 1000);
+    let ok = false;
+    try { ok = (await fetch(`${base}/json/version`)).ok; } catch {}
+    const pct = ok ? 100 : Math.min(99, Math.round((elapsed / timeoutSec) * 100));
+    bar(pct, ok ? 'CDP 就绪！' : `等待 WorkBuddy 启动（已 ${elapsed}s / 预计 ${timeoutSec}s）`, ref);
+    if (ok) {
+      if (process.stdout.isTTY) process.stdout.write('\n');
+      return elapsed;
+    }
+    if (elapsed >= timeoutSec) {
+      if (process.stdout.isTTY) process.stdout.write('\n');
+      die(`等待超时（${timeoutSec}s）。请确认 WorkBuddy 窗口已打开且加载完成。`);
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+/* ---------- 网络监听：enable → reload → 收集 ---------- */
+async function captureNetwork(t, seconds, reload) {
+  return withTarget(t, async (ws, nextId) => {
+    const reqs = new Map();
+    await cdp(ws, nextId(), 'Network.enable');
+    const onMsg = (ev) => {
+      let m;
+      try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.method === 'Network.requestWillBeSent') {
+        reqs.set(m.params.requestId, { method: m.params.request.method, url: m.params.request.url, status: '' });
+      } else if (m.method === 'Network.responseReceived') {
+        const r = reqs.get(m.params.requestId);
+        if (r) r.status = m.params.response.status;
+      }
+    };
+    ws.addEventListener('message', onMsg);
+    if (reload) {
+      // 页面重新加载才能捕获完整流量（否则只能看到监听之后的新请求）
+      await cdp(ws, nextId(), 'Page.enable');
+      await cdp(ws, nextId(), 'Page.reload', { ignoreCache: false }).catch(() => {});
+    }
+    await new Promise((r) => setTimeout(r, seconds * 1000));
+    ws.removeEventListener('message', onMsg);
+    return [...reqs.values()];
+  });
+}
+
+/* ---------- 主流程 ---------- */
 (async () => {
+  if (cmd === 'wait') {
+    const timeout = parseInt(argOf('--timeout', '240'), 10);
+    await waitReady(timeout);
+    console.log(`[OK] CDP 端点就绪: ${base}`);
+    return;
+  }
+
   const ts = await getTargets();
 
   if (cmd === 'list') {
@@ -96,20 +171,20 @@ async function withTarget(t, fn) {
       console.log(`[${t.type}] #${t.id}  ${t.title || '(untitled)'}`);
       console.log(`    ${t.url}${tag}`);
     }
-    console.log(`\n共 ${m.length} 个目标（总计 ${ts.length}）。`);
+    console.log(`\n共 ${m.length} 个目标（总计 ${ts.length} 个）。`);
     return;
   }
 
   if (cmd === 'eval') {
     const [t] = matchTargets(ts, urlSub);
-    const out = await withTarget(t, async (ws, id) => {
-      const r = await cdp(ws, ++id, 'Runtime.evaluate', {
+    const out = await withTarget(t, async (ws, nextId) => {
+      const r = await cdp(ws, nextId(), 'Runtime.evaluate', {
         expression: expr,
         returnByValue: true,
-        awaitPromise: args.includes('--await'),
+        awaitPromise: has('--await'),
         userGesture: true,
       });
-      if (r.exceptionDetails) throw new Error('页面异常: ' + JSON.stringify(r.exceptionDetails.exception?.description || r.exceptionDetails.text).slice(0, 400));
+      if (r.exceptionDetails) throw new Error('页面异常: ' + String(r.exceptionDetails.exception?.description || r.exceptionDetails.text).slice(0, 400));
       return r.result;
     });
     console.log('[eval 结果] ' + JSON.stringify(out.value ?? out, null, 2));
@@ -119,23 +194,65 @@ async function withTarget(t, fn) {
   if (cmd === 'nav') {
     if (!toUrl) die('nav 需要 --to <url>');
     const [t] = matchTargets(ts, urlSub);
-    await withTarget(t, async (ws, id) => {
-      await cdp(ws, ++id, 'Page.enable');
-      const done = new Promise((res) => {
+    await withTarget(t, async (ws, nextId) => {
+      await cdp(ws, nextId(), 'Page.enable');
+      const loaded = new Promise((res) => {
         const onMsg = (ev) => {
-          if (JSON.parse(ev.data).method === 'Page.loadEventFired') {
-            ws.removeEventListener('message', onMsg); res();
-          }
+          if (JSON.parse(ev.data).method === 'Page.loadEventFired') { ws.removeEventListener('message', onMsg); res(); }
         };
         ws.addEventListener('message', onMsg);
-        setTimeout(res, 15000);
+        setTimeout(res, 20000);
       });
-      await cdp(ws, ++id, 'Page.navigate', { url: toUrl });
-      await done;
+      await cdp(ws, nextId(), 'Page.navigate', { url: toUrl });
+      await loaded;
     });
     console.log('[nav 完成] ' + toUrl);
     return;
   }
 
-  die(`未知命令: ${cmd}（可用: list / eval / nav）`);
+  if (cmd === 'net') {
+    const seconds = parseInt(argOf('--seconds', '6'), 10);
+    const reload = !has('--no-reload');
+    const [t] = matchTargets(ts, urlSub);
+    console.log(`[*] 监听网络 ${seconds}s（${reload ? '自动刷新页面以捕获完整流量，' : ''}结束后输出）...`);
+    const reqs = await captureNetwork(t, seconds, reload);
+    console.log(`[*] 捕获 ${reqs.length} 个请求：`);
+    for (const r of reqs.slice(0, 60)) {
+      console.log(`  [${String(r.status || '...').padEnd(3)}] ${r.method.padEnd(5)} ${r.url.slice(0, 110)}`);
+    }
+    if (reqs.length > 60) console.log(`  ... 其余 ${reqs.length - 60} 条省略`);
+    return;
+  }
+
+  if (cmd === 'shot') {
+    const [t] = matchTargets(ts, urlSub);
+    const png = await withTarget(t, async (ws, nextId) => {
+      await cdp(ws, nextId(), 'Page.enable');
+      const r = await cdp(ws, nextId(), 'Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+      return Buffer.from(r.data, 'base64');
+    });
+    const out = argOf('--out', `wb-shot-${Date.now()}.png`);
+    fs.writeFileSync(out, png);
+    console.log(`[OK] 截图已保存: ${out}（${(png.length / 1024).toFixed(0)} KB）`);
+    return;
+  }
+
+  if (cmd === 'devtools') {
+    const [t] = matchTargets(ts, urlSub);
+    // 正确方式：Chromium 的调试 HTTP 服务自带 DevTools 前端页面，
+    // 用默认浏览器打开即可获得完整 DevTools（勿用 Target.createTarget，会挂起 webview）。
+    let url = t.devToolsFrontendUrl || '';
+    if (url && !url.startsWith('http')) url = base + url;
+    if (!url) die('该目标没有 DevTools 前端地址');
+    console.log('[DevTools 页面] ' + url);
+    console.log('[目标列表页  ] ' + base + '/json');
+    if (has('--open')) {
+      try { execSync(process.platform === 'win32' ? `start "" "${url}"` : `xdg-open "${url}"`, { stdio: 'ignore', shell: true }); console.log('[OK] 已在默认浏览器打开'); } catch {}
+    } else {
+      console.log('（加 --open 自动在默认浏览器打开；需用 Chrome/Edge 打开）');
+    }
+    return;
+  }
+
+  die(`未知命令: ${cmd}（可用: wait / list / eval / nav / net / shot / devtools）`);
 })();

@@ -17,13 +17,26 @@ WorkBuddy 桌面端（5.4.4 实测）**不需要打补丁**：
 3. 驱动内置浏览器（WorkBuddy 的 agent 可通过 shell 直接调用）：
 
 ```bash
-node wb-cdp.mjs list                                # 列出全部目标
-node wb-cdp.mjs eval --url baidu --expr "1+1"       # 在预览面板执行 JS
+node wb-cdp.mjs list                                  # 列出全部目标
+node wb-cdp.mjs eval --url baidu --expr "1+1"         # 在预览面板执行 JS
 node wb-cdp.mjs nav  --url baidu --to "https://example.com"   # 导航
-node wb-cdp.mjs eval --url baidu --expr "fetch('/').then(r=>r.status)" --await
+node wb-cdp.mjs net  --url baidu --seconds 6          # 网络监听（自动刷新捕获）
+node wb-cdp.mjs shot --url baidu --out shot.png       # 整页截图
+node wb-cdp.mjs devtools --url baidu --open           # 打开 DevTools 页面
+node wb-cdp.mjs wait --timeout 240                    # 等待端点就绪（进度条）
 ```
 
 关闭方式：普通方式启动 WorkBuddy 即为原版（未加 `/persist` 时，环境变量只影响本次启动器派生的进程树）。
+
+## 默认暴露给 agent（全局记忆）
+
+WorkBuddy 内置 agent 引擎会读取全局记忆文件，安装脚本已写入：
+
+```
+%USERPROFILE%.codebuddyCODEBUDDY.md
+```
+
+内容是 wb-cdp.mjs 全部命令的说明。之后**每次新对话**，agent 自动知道如何驱动内置浏览器，无需再提醒。（若想撤销，删除该文件即可。）
 
 ## 与 ZCode 补丁的关系
 

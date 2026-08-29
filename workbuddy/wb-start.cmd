@@ -40,16 +40,9 @@ if "%PERSIST%"=="1" setx WORKBUDDY_REMOTE_DEBUGGING_PORT "%PORT%" >nul
 echo [*] Starting WorkBuddy in CDP mode ...
 start "" "%WB_EXE%"
 
-echo [*] Waiting for CDP endpoint (up to 30s) ...
-set /a TRY=0
-:waitloop
-timeout /t 2 /nobreak >nul
-set /a TRY+=1
-echo     checking ... (%TRY%/15)
-node "%~dp0wb-cdp.mjs" list >nul 2>&1
+echo [*] Waiting for WorkBuddy to fully start (cold start takes 1-2 min, progress below) ...
+node "%~dp0wb-cdp.mjs" wait --timeout 240
 if errorlevel 1 (
-    if %TRY% lss 15 goto waitloop
-    echo [x] Timeout: CDP endpoint not ready.
     pause
     exit /b 1
 )
