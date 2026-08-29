@@ -48,13 +48,21 @@ while ($true) {
                 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove -WaitForExit
             }
             '5' {
-                & cmd /c "`"$Root\..\workbuddy\wb-start.cmd`""
-                & node (Join-Path $Root '..\workbuddy\wb-cdp.mjs') list
-            }
-            '4' {
-                & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Status
-            }
-            '0' { break }
+                Write-Host ''
+                setx WORKBUDDY_REMOTE_DEBUGGING_PORT 9222 | Out-Null
+                Write-Host '[OK] 已永久启用：WorkBuddy 每次启动自动带 CDP（端口 9222）'
+                $wb = Get-Process WorkBuddy -ErrorAction SilentlyContinue
+                if ($wb) {
+                    Write-Host '[*] 重启 WorkBuddy 以立即生效 ...'
+                    $wbExe = ($wb | Where-Object Path | Select-Object -First 1).Path
+                    $wb | Stop-Process -Force
+                    Start-Sleep -Seconds 2
+                    if ($wbExe) { Start-Process $wbExe } else { Start-Process 'E:WorkBuddyWorkBuddy.exe' }
+                    Write-Host '[OK] WorkBuddy 已以 CDP 模式重启'
+                } else {
+                    Write-Host '[提示] 下次启动 WorkBuddy 时自动生效'
+                }
+            }            '0' { break }
             default { }
         }
     } catch {

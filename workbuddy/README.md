@@ -10,11 +10,9 @@ WorkBuddy 桌面端（5.4.4 实测）**不需要打补丁**：
 
 因此本目录提供的是**启动器 + CDP 客户端**，而非补丁。
 
-## 使用
+## 使用（装完即永久生效）
 
-1. 双击 `wb-start.cmd`（或 `wb-start.cmd 9333` 指定端口；加 `/persist` 永久写入用户环境变量）
-2. WorkBuddy 启动后自动列出 CDP 目标（内置浏览器预览会标注出来）
-3. 驱动内置浏览器（WorkBuddy 的 agent 可通过 shell 直接调用）：
+**一次性启用**（菜单 [5] 或 `setx WORKBUDDY_REMOTE_DEBUGGING_PORT 9222`）之后：WorkBuddy 无论从哪里启动（图标/开始菜单/开机自启）都自动带 CDP，没有任何命令窗口。agent 直接用以下命令驱动内置浏览器：
 
 ```bash
 node wb-cdp.mjs list                                  # 列出全部目标
@@ -26,7 +24,7 @@ node wb-cdp.mjs devtools --url baidu --open           # 打开 DevTools 页面
 node wb-cdp.mjs wait --timeout 240                    # 等待端点就绪（进度条）
 ```
 
-关闭方式：普通方式启动 WorkBuddy 即为原版（未加 `/persist` 时，环境变量只影响本次启动器派生的进程树）。
+关闭 CDP：`setx WORKBUDDY_REMOTE_DEBUGGING_PORT ""` 后重启 WorkBuddy（一般没必要）。
 
 ## 默认暴露给 agent（全局记忆）
 
