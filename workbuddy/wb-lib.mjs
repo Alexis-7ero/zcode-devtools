@@ -72,7 +72,7 @@ export async function waitReady(timeoutSec = 240, onTick) {
     const elapsed = Math.round((Date.now() - t0) / 1000);
     let ok = false;
     try {
-      const r = await fetch(`${base}/json/version`);
+      const r = await fetch(`${base}/json/version`, { signal: AbortSignal.timeout(3000) });
       ok = r.ok;
     } catch {}
     if (ok) {
