@@ -72,6 +72,20 @@ await tab.openDevTools();                            // 打开 DevTools 窗口
 | Broker | `Resources/glm/zcode.cjs` | 同步放行 schema |
 | 模型侧插件 | browser-use 0.4.0 缓存 | `Tab.get cdp()` 返回裸对象绕过 `hideUnknown` 白名单 |
 
+
+## WorkBuddy 支持（v1.2.0+ · 免补丁）
+
+WorkBuddy 桌面端（5.4.4 实测）官方预留了 CDP 开关：启动前设置环境变量 `WORKBUDDY_REMOTE_DEBUGGING_PORT`，应用会自动打开远程调试并放行本机来源——内置浏览器预览即成为标准 CDP target。无需修改 asar（也无法修改：完整性清单已嵌入 + fuse ON）。
+
+```bat
+workbuddywb-start.cmd                    # 以 CDP 模式启动 WorkBuddy（端口 9222）
+node workbuddywb-cdp.mjs list            # 列出目标（预览面板会标注）
+node workbuddywb-cdp.mjs eval --url baidu --expr "1+1"
+node workbuddywb-cdp.mjs nav  --url baidu --to "https://example.com"
+```
+
+WorkBuddy 的 agent 也能通过 shell 直接驱动内置浏览器：`node wb-cdp.mjs eval --url <关键词> --expr "..."` —— 等价于 ZCode 的 `tab.cdp.*`。
+
 ## 注意
 
 - 仅适用于 **3.10.1**（脚本会核对版本）。ZCode 自动升级后请先 `Status` 查看，通常需重新适配。

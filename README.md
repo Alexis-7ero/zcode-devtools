@@ -74,6 +74,20 @@ await tab.openDevTools();                            // open DevTools window
 | Broker | `Resources/glm/zcode.cjs` | same schema relaxation |
 | Model-side plugin | browser-use 0.4.0 cache | `Tab.get cdp()` returns a bare object to bypass the `hideUnknown` allowlist |
 
+
+## WorkBuddy support (v1.2.0+, zero-patch)
+
+WorkBuddy desktop (5.4.4) ships an **official CDP switch**: set env `WORKBUDDY_REMOTE_DEBUGGING_PORT` before launching and the app self-enables remote debugging (with `remote-allow-origins`) — its built-in browser preview becomes a standard CDP target. No asar modification (and none possible: integrity manifest is embedded + fuse ON).
+
+```bat
+workbuddywb-start.cmd                    # launch WorkBuddy in CDP mode (port 9222)
+node workbuddywb-cdp.mjs list            # list targets (preview marked)
+node workbuddywb-cdp.mjs eval --url baidu --expr "1+1"
+node workbuddywb-cdp.mjs nav  --url baidu --to "https://example.com"
+```
+
+The WorkBuddy agent itself can drive the built-in browser via shell: `node wb-cdp.mjs eval --url <kw> --expr "..."` — equivalent of ZCode's `tab.cdp.*`.
+
 ## Notes
 
 - Targets **3.10.1** only (scripts verify the version). After a ZCode auto-update, run `Status` first — a re-port is usually needed.

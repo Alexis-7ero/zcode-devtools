@@ -23,7 +23,8 @@ function Show-Menu {
     Write-Host '|   [2] 备份当前原版文件                   |'
     Write-Host '|   [3] 卸载补丁（自动结束ZCode+还原）     |'
     Write-Host '|   [4] 查看补丁状态                       |'
-    Write-Host '|   [0] 退出                               |'
+    Write-Host '|   [5] WorkBuddy CDP 模式（免补丁官方通道） |
+|   [0] 退出                               |'
     Write-Host '+------------------------------------------+' -ForegroundColor Cyan
 }
 
@@ -45,6 +46,10 @@ while ($true) {
             }
             '3' {
                 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Remove -WaitForExit
+            }
+            '5' {
+                & cmd /c "`"$Root\..\workbuddy\wb-start.cmd`""
+                & node (Join-Path $Root '..\workbuddy\wb-cdp.mjs') list
             }
             '4' {
                 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Core Status
