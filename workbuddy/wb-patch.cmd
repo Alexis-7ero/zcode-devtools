@@ -195,18 +195,11 @@ set "ASAR_JS=%SRC%node_modules\@electron\asar\bin\asar.mjs"
 if exist "%ASAR_JS%" exit /b 0
 echo        first run: fetching @electron/asar via npm ...
 where npm >nul 2>&1
-if errorlevel 1 (
-  echo [x] npm not found - install Node.js, or run "npm install" in this folder
-  exit /b 1
-)
+if errorlevel 1 goto npm_missing
 pushd "%SRC%"
 call npm install --no-audit --no-fund --loglevel=error
-set "NPM_RC=%errorlevel%"
 popd
-if not "%NPM_RC%"=="0" (
-  echo [x] npm install failed (exit %NPM_RC%)
-  exit /b 1
-)
-if exist "%ASAR_JS%" exit /b 0
-echo [x] @electron/asar still missing after npm install
+if exist "%ASAR_JS%" goto picknode_ok
+:npm_missing
+echo [x] @electron/asar unavailable - open a terminal in this folder and run: npm install
 exit /b 1
