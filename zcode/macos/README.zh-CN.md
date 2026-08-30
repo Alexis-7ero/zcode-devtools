@@ -12,7 +12,7 @@
 
 ```bash
 chmod +x cdp-patch.sh
-node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
+node ../fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
 ```
 
 - 若输出 `asar 完整性清单嵌入: 是` → **本补丁不适用**，请勿继续（修改 asar 会被拒绝启动）；

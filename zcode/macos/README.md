@@ -12,7 +12,7 @@ Install Node.js (`brew install node`), then run the health check:
 
 ```bash
 chmod +x cdp-patch.sh
-node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
+node ../fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode
 ```
 
 - If it prints the **integrity manifest embedded: yes** → this patch does **not** apply; modifying the asar would be rejected at launch. Stop here.

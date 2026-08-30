@@ -3,19 +3,20 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
-// ZCode DevTools 双击启动器：提权后进入 cdp-menu.ps1 交互菜单
+// DevTools Tool 双击启动器：进入 app-menu.ps1 统一菜单（ZCode + WorkBuddy）。
+// ZCode 装在 Program Files 需要管理员权限，因此启动即请求提权（WorkBuddy 不受影响）。
 // 源码即此文件，可用系统自带 csc 重新编译：
-//   %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:exe /out:ZCodeCDPTool.exe launcher.cs
+//   %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:exe /out:DevToolsTool.exe DevToolsTool.cs
 internal static class Launcher
 {
     private static int Main(string[] args)
     {
         var exePath = Assembly.GetExecutingAssembly().Location;
         var dir = Path.GetDirectoryName(exePath) ?? ".";
-        var menu = Path.Combine(dir, "cdp-menu.ps1");
+        var menu = Path.Combine(dir, "app-menu.ps1");
         if (!File.Exists(menu))
         {
-            Console.WriteLine("[x] 缺少 cdp-menu.ps1，请将本程序与补丁仓库 windows 目录放在一起。");
+            Console.WriteLine("[x] app-menu.ps1 not found. Keep this exe at the repo root.");
             return 1;
         }
 
@@ -25,7 +26,6 @@ internal static class Launcher
 
         if (!isAdmin)
         {
-            // 触发 UAC，提权重启自身；提权后的实例负责启动菜单
             var self = new ProcessStartInfo(exePath)
             {
                 UseShellExecute = true,
@@ -40,13 +40,13 @@ internal static class Launcher
             }
             catch (Exception)
             {
-                Console.WriteLine("[x] 已取消提权。请以管理员身份重新运行。");
+                Console.WriteLine("[x] elevation canceled. Run as administrator to patch ZCode (WorkBuddy works without it).");
                 return 1;
             }
         }
 
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.Title = "ZCode DevTools";
+        Console.Title = "DevTools Tool (ZCode / WorkBuddy)";
         var psi = new ProcessStartInfo
         {
             FileName = "powershell.exe",

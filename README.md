@@ -10,8 +10,9 @@ Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built
 
 | Platform | Entry | Status |
 |----------|-------|--------|
-| Windows x64 | [`windows/cdp-patch.ps1`](windows/) — docs: [EN](windows/README.md) / [中文](windows/README.zh-CN.md) | ✅ verified on a real machine |
-| macOS | [`macos/cdp-patch.sh`](macos/) — docs: [EN](macos/README.md) / [中文](macos/README.zh-CN.md) | ⚠️ untested on a real Mac, feedback welcome |
+| Windows x64 | [`zcode/windows/cdp-patch.ps1`](zcode/windows/) — docs: [EN](zcode/windows/README.md) / [中文](zcode/windows/README.zh-CN.md) | ✅ verified on a real machine |
+| macOS | [`zcode/macos/cdp-patch.sh`](zcode/macos/) — docs: [EN](zcode/macos/README.md) / [中文](zcode/macos/README.zh-CN.md) | ⚠️ untested on a real Mac, feedback welcome |
+| **WorkBuddy 5.4.4** (Windows x64) | [`DevToolsTool.exe`](workbuddy/) — docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md) | ✅ verified on a real machine |
 
 ## Quick start
 
@@ -20,13 +21,13 @@ Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built
 ### Windows (admin PowerShell)
 
 ```powershell
-cd windows
+cd zcode/windows
 .\cdp-patch.ps1 Status               # show state (no admin needed)
 .\cdp-patch.ps1 Apply -WaitForExit   # enable; waits for ZCode to exit, then finishes in ~1-2 min
 .\cdp-patch.ps1 Remove               # disable patch, restore originals
 ```
 
-Windows users can also just double-click `windows/ZCodeCDPTool.exe` — an interactive menu (① install ② backup ③ remove ④ status) with a progress bar. `cdp-menu.ps1` / `launcher.cs` are the menu source, rebuildable with the system csc.
+Windows users can also just double-click the root `DevToolsTool.exe` — a unified interactive menu (① install ② backup ③ remove ④ status ⑤ switch target ZCode/WorkBuddy) with auto EN/中文 UI. `app-menu.ps1` / `DevToolsTool.cs` are the menu source, rebuildable with the system csc.
 
 
 ### macOS
@@ -36,12 +37,12 @@ Double-click `macos/Menu.command` (interactive menu: ① install ② backup ③ 
 Preflight before first use:
 
 ```bash
-node fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # check fuses / integrity manifest
+node zcode/fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # check fuses / integrity manifest
 ```
 
 ## WorkBuddy module
 
-The [`workbuddy/`](workbuddy/) directory hosts an independent module for **Tencent WorkBuddy 5.4.4**: it injects a native `browser_cdp` builtin tool (eval / screenshot / network / events / raw CDP / DevTools) for the agent built-in browser, unlocks the hidden right-click Inspect, and turns the official CDP port always-on. Double-click `workbuddy/WorkBuddyCDPTool.exe` to install; `wb-patch.cmd remove` restores the originals. Full docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md).
+The [`workbuddy/`](workbuddy/) directory hosts an independent module for **Tencent WorkBuddy 5.4.4**: it injects a native `browser_cdp` builtin tool (eval / screenshot / network / events / raw CDP / DevTools) for the agent built-in browser, unlocks the hidden right-click Inspect, and turns the official CDP port always-on. Run the root `DevToolsTool.exe`, press `5` to switch target to WorkBuddy, then `1` to install; `wb-patch.cmd remove` restores the originals. Full docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md).
 
 ## Verify (new conversation after enabling)
 
@@ -83,5 +84,5 @@ await tab.openDevTools();                            // open DevTools window
 
 - Targets **3.10.1** only (scripts verify the version). After a ZCode auto-update, run `Status` first — a re-port is usually needed.
 - `Apply` is idempotent: re-running on a patched install is skipped (`-Force` overrides).
-- Why a file patch? `NODE_OPTIONS` injection is stripped by Electron's allowlist in packaged apps, so zero-file-modification is impossible (post-mortem in `windows/cdp-hook-archive/`). And the Windows build embeds no `ElectronAsarIntegrity` manifest, so the asar can be modified safely — mac users must run `fuse-scan.mjs` preflight first.
+- Why a file patch? `NODE_OPTIONS` injection is stripped by Electron's allowlist in packaged apps, so zero-file-modification is impossible (post-mortem in `zcode/windows/cdp-hook-archive/`). And the Windows build embeds no `ElectronAsarIntegrity` manifest, so the asar can be modified safely — mac users must run `fuse-scan.mjs` preflight first.
 - CDP is extremely powerful (read/write any page state, inject scripts). Use **only against authorized targets**.

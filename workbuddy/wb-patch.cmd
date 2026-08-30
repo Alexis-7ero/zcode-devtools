@@ -17,8 +17,25 @@ if "%MODE%"=="" set "MODE=install"
 if /i "%MODE%"=="status" goto status
 if /i "%MODE%"=="remove" goto remove
 if /i "%MODE%"=="install" goto install
-echo usage: wb-patch.cmd [install ^| remove ^| status]
+if /i "%MODE%"=="backup" goto backup
+echo usage: wb-patch.cmd [install ^| remove ^| backup ^| status]
 exit /b 2
+
+:backup
+echo ==============================================
+echo  WorkBuddy native CDP patch - backup
+echo ==============================================
+if not exist "%WB_EXE%" (
+  echo [x] WorkBuddy.exe not found at %WB_EXE%
+  pause
+  exit /b 1
+)
+if not exist "%BK%" mkdir "%BK%"
+copy /y "%WB_EXE%" "%BK%\WorkBuddy.exe" >nul
+copy /y "%WB_RES%\app.asar" "%BK%\app.asar" >nul
+echo [OK] Backup ready: %BK%
+pause
+exit /b 0
 
 :install
 echo ==============================================

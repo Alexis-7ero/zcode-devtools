@@ -1,12 +1,12 @@
 # 运行时生成的整包/文件备份（Apply 自动创建，不入库）
-windows/backup/*.original
-windows/backup/metadata.json
-windows/backup/*.log
+zcode/windows/backup/*.original
+zcode/windows/backup/metadata.json
+zcode/windows/backup/*.log
 # 未压缩 Broker 中间产物
-payload/
-windows/payload/
+zcode/payload/
+zcode/windows/payload/
 # macOS 运行时备份
-macos/backup/
+zcode/macos/backup/
 
 # WorkBuddy module: local build/test artifacts
 workbuddy/node_modules/

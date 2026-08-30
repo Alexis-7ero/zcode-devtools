@@ -24,7 +24,7 @@ Because Electron's asar-integrity fuse would reject a modified `app.asar`, the i
 
 ## Quick start
 
-Double-click **`WorkBuddyCDPTool.exe`** → `1` (install). The script:
+Run the repo-root **`DevToolsTool.exe`** → `5` (switch target to WorkBuddy) → `1` (install). The script:
 
 1. gracefully closes WorkBuddy (force after 15 s),
 2. backs up `WorkBuddy.exe` + `app.asar` to `resources\cdp-patch-backup\`,
@@ -73,7 +73,7 @@ wb-cdp.cmd status | list | use <n> | open <url> | eval "<js>" | shot [file] | ne
 
 | file | role |
 |------|------|
-| `WorkBuddyCDPTool.exe` / `WorkBuddyCDPTool.cs` / `wb-menu.ps1` | double-click menu (source included, rebuildable with system csc) |
+| `../DevToolsTool.exe` / `../DevToolsTool.cs` / `../app-menu.ps1` | unified double-click menu for ZCode + WorkBuddy (source included, rebuildable with system csc) |
 | `wb-patch.cmd` | install / remove / status orchestrator with safety gates |
 | `apply-patch.mjs` | the actual injection (tool factory + Inspect + always-on port) |
 | `verify-pack.mjs` | static verification of the repacked asar |

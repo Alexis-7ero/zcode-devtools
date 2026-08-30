@@ -24,7 +24,7 @@
 
 ## 快速开始
 
-双击 **`WorkBuddyCDPTool.exe`** → 选 `1`（安装）。脚本会：
+运行仓库根目录的 **`DevToolsTool.exe`** → 选 `5`（切换目标到 WorkBuddy）→ 选 `1`（安装）。脚本会：
 
 1. 优雅关闭 WorkBuddy（15 秒后强杀），
 2. 备份 `WorkBuddy.exe` + `app.asar` 到 `resources\cdp-patch-backup\`，
@@ -73,7 +73,7 @@ wb-cdp.cmd status | list | use <n> | open <url> | eval "<js>" | shot [file] | ne
 
 | 文件 | 作用 |
 |------|------|
-| `WorkBuddyCDPTool.exe` / `WorkBuddyCDPTool.cs` / `wb-menu.ps1` | 双击菜单（源码随附，系统 csc 可重编译） |
+| `../DevToolsTool.exe` / `../DevToolsTool.cs` / `../app-menu.ps1` | ZCode + WorkBuddy 统一双击菜单（源码随附，系统 csc 可重编译） |
 | `wb-patch.cmd` | 安装 / 卸载 / 状态 总控，带安全闸门 |
 | `apply-patch.mjs` | 实际注入逻辑（工具工厂 + Inspect + 端口常开） |
 | `verify-pack.mjs` | 重打包产物的静态验证 |
