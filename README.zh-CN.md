@@ -25,7 +25,7 @@ cd zcode/windows
 .\cdp-patch.ps1 Remove               # 停用补丁，还原原版
 ```
 
-Windows 用户也可以直接双击根目录的 `DevToolsTool.exe` —— 统一交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态 ⑤ 切换目标 ZCode/WorkBuddy），界面按系统语言自动中英文。`app-menu.ps1` / `DevToolsTool.cs` 为菜单源码，可用系统自带 csc 重新编译。
+Windows 用户也可以直接双击根目录的 `DevToolsTool.exe` —— 统一交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态 ⑤ 切换目标 ZCode/WorkBuddy ⑥ 语言切换），默认中文界面，⑥ 可切换英文。`app-menu.ps1` / `DevToolsTool.cs` 为菜单源码，可用系统自带 csc 重新编译。
 
 
 ### macOS

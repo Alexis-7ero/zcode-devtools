@@ -24,7 +24,7 @@ cd zcode-devtools-windows
 
 One-click reinstall: double-click `reinstall.cmd` (or menu [1]) — it quits ZCode, restores the pristine baseline, re-hooks and self-checks in a single run.
 
-Double-click the repo-root `DevToolsTool.exe` for a unified interactive menu (① install ② backup ③ remove ④ status, ⑤ switch ZCode/WorkBuddy target) with a progress bar and auto EN/中文 UI.
+Double-click the repo-root `DevToolsTool.exe` for a unified interactive menu (① install ② backup ③ remove ④ status, ⑤ switch ZCode/WorkBuddy target, ⑥ language 中文/English) with a progress bar — Chinese UI by default.
 
 After enabling, **start a new conversation** and verify:
 

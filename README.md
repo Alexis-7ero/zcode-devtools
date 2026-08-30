@@ -27,7 +27,7 @@ cd zcode/windows
 .\cdp-patch.ps1 Remove               # disable patch, restore originals
 ```
 
-Windows users can also just double-click the root `DevToolsTool.exe` — a unified interactive menu (① install ② backup ③ remove ④ status ⑤ switch target ZCode/WorkBuddy) with auto EN/中文 UI. `app-menu.ps1` / `DevToolsTool.cs` are the menu source, rebuildable with the system csc.
+Windows users can also just double-click the root `DevToolsTool.exe` — a unified interactive menu (① install ② backup ③ remove ④ status ⑤ switch target ZCode/WorkBuddy ⑥ language 中文/English) — Chinese UI by default. `app-menu.ps1` / `DevToolsTool.cs` are the menu source, rebuildable with the system csc.
 
 
 ### macOS

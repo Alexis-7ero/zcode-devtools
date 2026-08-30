@@ -24,7 +24,7 @@ cd zcode-cdp-patch-windows
 
 一键重装：双击 `reinstall.cmd`（或菜单 [1]）——自动结束 ZCode、还原纯净原版、重新 hook 并自检，一步到位。
 
-双击仓库根目录的 `DevToolsTool.exe` 进入统一交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态，⑤ 可切换 ZCode/WorkBuddy 目标），自带进度条，界面按系统语言自动中英文。
+双击仓库根目录的 `DevToolsTool.exe` 进入统一交互菜单（① 安装 ② 备份 ③ 卸载 ④ 状态，⑤ 可切换 ZCode/WorkBuddy 目标，⑥ 语言切换），自带进度条，默认中文界面。
 
 启用后**新开对话**验证：
 
