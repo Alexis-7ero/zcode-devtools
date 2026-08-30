@@ -184,21 +184,32 @@ exit /b 1
 
 :picknode
 set "NODE_EXE=node"
+set "USE_BUNDLED=0"
 where node >nul 2>&1
-if not errorlevel 1 goto picknode_ok
+if errorlevel 1 goto picknode_bundled
+goto picknode_ok
+:picknode_bundled
+rem no system node: fall back to the runtime WorkBuddy itself ships (node + npm.cmd)
 for /d %%D in ("%USERPROFILE%\.workbuddy\binaries\node\versions\*") do set "NODE_EXE=%%~fD\node.exe"
-if exist "%NODE_EXE%" goto picknode_ok
+if not exist "%NODE_EXE%" goto node_missing
+set "USE_BUNDLED=1"
+goto picknode_ok
+:node_missing
 echo [x] node not found - install Node.js first
 exit /b 1
 :picknode_ok
 set "ASAR_JS=%SRC%node_modules\@electron\asar\bin\asar.mjs"
 if exist "%ASAR_JS%" exit /b 0
 echo        first run: fetching @electron/asar via npm ...
+if "%USE_BUNDLED%"=="1" goto npm_bundled
 where npm >nul 2>&1
 if errorlevel 1 goto npm_missing
-pushd "%SRC%"
 call npm install --no-audit --no-fund --loglevel=error
-popd
+goto npm_check
+:npm_bundled
+for /d %%D in ("%USERPROFILE%\.workbuddy\binaries\node\versions\*") do set "NPM_CMD=%%~fD\npm.cmd"
+call "%NPM_CMD%" install --no-audit --no-fund --loglevel=error
+:npm_check
 if exist "%ASAR_JS%" goto picknode_ok
 :npm_missing
 echo [x] @electron/asar unavailable - open a terminal in this folder and run: npm install

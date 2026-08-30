@@ -5,7 +5,7 @@
 Give the WorkBuddy agent a **native `browser_cdp` tool** for driving its built-in browser (the preview panel opened via `present_files`): evaluate JS, full-page screenshots, network capture, CDP events, raw CDP, and DevTools — no MCP, no shell round-trips. Also unlocks the hidden right-click **Inspect** menu inside the built-in browser and turns the official CDP port always-on.
 
 - Tested against **WorkBuddy 5.4.4 (Windows x64)**. The patch anchors on exact source strings; other versions may need anchor updates.
-- Requirements: Node.js ≥ 22 (WorkBuddy's bundled node works too), internet access on first run (`npm install @electron/asar`).
+- Requirements: **none beyond WorkBuddy itself** for the patcher — if Node.js is missing it automatically falls back to the node + npm that WorkBuddy ships under `~/.workbuddy/binaries/node`. First run needs internet once (`npm install @electron/asar`). Default install location (`%LocalAppData%ProgramsWorkBuddy`) is auto-detected.
 
 ## How it works
 

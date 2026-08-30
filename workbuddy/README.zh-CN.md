@@ -5,7 +5,7 @@
 给 WorkBuddy 的 agent 注入一个**原生 `browser_cdp` 内置工具**，用来驱动它的内置浏览器（`present_files` 打开的预览面板）：页面执行 JS、整页截图、抓网络请求、读 CDP 事件、发任意 CDP 命令、打开 DevTools——不是 MCP，不需要 shell 绕路。同时解锁内置浏览器里隐藏的右键 **Inspect** 菜单，并把官方 CDP 调试端口改为默认常开。
 
 - 实测环境：**WorkBuddy 5.4.4（Windows x64）**。补丁锚定精确源码字符串，其他版本可能需要更新锚点。
-- 依赖：Node.js ≥ 22（WorkBuddy 自带的 node 也可以），首次运行需联网（`npm install @electron/asar`）。
+- 依赖：打补丁本身**不要求预装任何东西**——没有 Node.js 时自动回退到 WorkBuddy 自带的 node + npm（`~/.workbuddy/binaries/node`）。首次运行需联网一次（`npm install @electron/asar`）。默认安装路径（`%LocalAppData%ProgramsWorkBuddy`）自动发现。
 
 ## 原理
 
