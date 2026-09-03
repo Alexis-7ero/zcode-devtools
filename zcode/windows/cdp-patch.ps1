@@ -164,8 +164,15 @@ switch ($Action) {
         }
         $pluginPatched = Join-Path $REPO 'browser-client.mjs'
 
-        # 首次：整包备份（Remove 的唯一依据）
+        # 首次：整包备份（Remove 的唯一依据）；ZCode 版本变化时刷新备份，防止旧原版被还原到新版本上
         New-Item $BAK -ItemType Directory -Force | Out-Null
+        $exeVer = (Get-Item "$ZCODE\ZCode.exe").VersionInfo.ProductVersion
+        $verMark = Join-Path $BAK 'source-version.txt'
+        $staleBackup = (Test-Path "$BAK\app.asar.original") -and ((-not (Test-Path $verMark)) -or ((Get-Content $verMark -Raw -ErrorAction SilentlyContinue).Trim() -ne $exeVer))
+        if ($staleBackup) {
+            Write-Host "[*] 检测到 ZCode 版本变化：刷新整包备份（当前 $exeVer）..."
+            Remove-Item "$BAK\*.original" -Force
+        }
         if (-not (Test-Path "$BAK\app.asar.original")) {
             Write-Host '[*] 首次运行：整包备份原版 app.asar（约 300MB，一次性）...'
             Copy-Item "$ZCODE\resources\app.asar" "$BAK\app.asar.original"
@@ -179,6 +186,7 @@ switch ($Action) {
             Copy-Item "$firstPlugin\docs\api.json" "$BAK\api.json.original"
         }
 
+        Set-Content -Path $verMark -Value $exeVer
         Write-Host '[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）...'
         node $APPLY "$ZCODE\resources\app.asar" (Join-Path $REPO 'rules.cjs') (Join-Path $env:TEMP ('zcode-win-apply-' + [IO.Path]::GetRandomFileName()))
         if ($LASTEXITCODE -eq 4) { throw '目标已是补丁状态：请先执行 Remove（或菜单[3]）还原原版后再 Apply' }
@@ -199,6 +207,10 @@ switch ($Action) {
 
     'Backup' {
         New-Item $BAK -ItemType Directory -Force | Out-Null
+        $exeVer = (Get-Item "$ZCODE\ZCode.exe").VersionInfo.ProductVersion
+        $verMark = Join-Path $BAK 'source-version.txt'
+        $staleBackup = (Test-Path "$BAK\app.asar.original") -and ((-not (Test-Path $verMark)) -or ((Get-Content $verMark -Raw -ErrorAction SilentlyContinue).Trim() -ne $exeVer))
+        if ($staleBackup) { Remove-Item "$BAK\*.original" -Force }
         if (-not (Test-Path "$BAK\app.asar.original")) {
             Copy-Item "$ZCODE\resources\app.asar" "$BAK\app.asar.original"
             Write-Host '[OK] app.asar 已备份'
@@ -213,6 +225,7 @@ switch ($Action) {
             Copy-Item "$fp\docs\api.json" "$BAK\api.json.original"
             Write-Host '[OK] 插件已备份'
         }
+        Set-Content -Path $verMark -Value $exeVer
         Write-Host '✅ 备份完成（backup 目录）'
     }
 

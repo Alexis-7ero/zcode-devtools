@@ -44,9 +44,9 @@ function Get-Strings($lang) {
 $T = Get-Strings $lang
 
 function Invoke-Zcode($action, $wait) {
-    $extra = ""
-    if ($wait) { $extra = " -WaitForExit" }
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$dir\zcode\windows\cdp-patch.ps1" $action$extra
+    $argList = @($action)
+    if ($wait) { $argList += "-WaitForExit" }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$dir\zcode\windows\cdp-patch.ps1" @argList
 }
 function Invoke-Workbuddy($action) {
     & cmd.exe /c "`"$dir\workbuddy\wb-patch.cmd`" $action"
