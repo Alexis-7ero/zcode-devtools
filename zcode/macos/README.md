@@ -82,5 +82,5 @@ backup/                       # full backup generated on first Apply (not commit
 
 ## Notes
 
-- Targets **3.10.1** only. After a ZCode auto-update, run `Status` first.
+- Targets **3.10.1**（same rules.cjs as the Windows module, which auto-adapted to 3.10.2）. After a ZCode auto-update, run `Status` first.
 - CDP is extremely powerful (read/write any page state, inject scripts). Use **only against authorized targets**.

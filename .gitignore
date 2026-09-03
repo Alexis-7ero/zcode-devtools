@@ -20,3 +20,10 @@ workbuddy/install-log*.txt
 workbuddy/ctx*.txt
 workbuddy/test-shot*.png
 workbuddy/csc-tmp.exe
+
+# 旧版预烤 payload 产物（规则引擎已取代）
+zcode/payload/
+zcode/payload-*.deprecated
+
+# 3.10.2 适配用的临时解包/测试目录
+.tmp3102/

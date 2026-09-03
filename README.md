@@ -2,9 +2,9 @@
 
 [中文说明](README.zh-CN.md)
 
-Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser (IAB) of **ZCode Desktop 3.10.1**. After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools.
+Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser (IAB) of **ZCode Desktop 3.10.1 / 3.10.2**. After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools.
 
-> Idea credits: `Almost-Zhangsan/zcode-cdp-patch-3.7.3`. Re-ported from scratch for the 3.10.1 build — the patch reuses official internals (`ensureGuest` / `sendGuestCdpCommand`, Electron `webContents.debugger`) and adds no external connections. CDP events are buffered in memory per tab (cap 5000).
+> Idea credits: `Almost-Zhangsan/zcode-cdp-patch-3.7.3`. Re-ported from scratch for the 3.10.1 build and forward-verified on 3.10.2 (content-anchor rules engine, zero rule changes needed) — the patch reuses official internals (`ensureGuest` / `sendGuestCdpCommand`, Electron `webContents.debugger`) and adds no external connections. CDP events are buffered in memory per tab (cap 5000).
 
 ## Choose your platform
 
@@ -82,7 +82,7 @@ await tab.openDevTools();                            // open DevTools window
 
 ## Notes
 
-- Targets **3.10.1** only (scripts verify the version). After a ZCode auto-update, run `Status` first — a re-port is usually needed.
+- Targets **3.10.1 / 3.10.2**. The rules engine matches code by content anchors, so minor build changes are absorbed automatically; after a ZCode auto-update, run `Status` first.
 - `Apply` is idempotent: re-running on a patched install is skipped (`-Force` overrides).
 - Why a file patch? `NODE_OPTIONS` injection is stripped by Electron's allowlist in packaged apps, so zero-file-modification is impossible (post-mortem in `zcode/windows/cdp-hook-archive/`). And the Windows build embeds no `ElectronAsarIntegrity` manifest, so the asar can be modified safely — mac users must run `fuse-scan.mjs` preflight first.
 - CDP is extremely powerful (read/write any page state, inject scripts). Use **only against authorized targets**.

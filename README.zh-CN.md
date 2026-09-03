@@ -2,9 +2,9 @@
 
 [English](README.md)
 
-为 **ZCode Desktop 3.10.1** 的内置浏览器（IAB）启用隐藏的 CDP（Chrome DevTools 协议）调试通道。打上补丁后，模型可以通过 `tab.cdp.*` 和 `tab.openDevTools()` 对内置浏览器标签页做调试：任意 CDP 命令、事件流读取、断点/暂停/继续、打开 DevTools。
+为 **ZCode Desktop 3.10.1 / 3.10.2** 的内置浏览器（IAB）启用隐藏的 CDP（Chrome DevTools 协议）调试通道。打上补丁后，模型可以通过 `tab.cdp.*` 和 `tab.openDevTools()` 对内置浏览器标签页做调试：任意 CDP 命令、事件流读取、断点/暂停/继续、打开 DevTools。
 
-> 思路致谢：`Almost-Zhangsan/zcode-cdp-patch-3.7.3`。本仓库针对 3.10.1 构建从零重新移植——复用官方已有的 `ensureGuest` / `sendGuestCdpCommand`（Electron `webContents.debugger`），不引入任何外部连接，CDP 事件按 tabId 内存缓冲（上限 5000 条）。
+> 思路致谢：`Almost-Zhangsan/zcode-cdp-patch-3.7.3`。本仓库针对 3.10.1 构建从零重新移植，并已在 3.10.2 上前向验证（规则引擎按内容锚点自适应，规则零修改）——复用官方已有的 `ensureGuest` / `sendGuestCdpCommand`（Electron `webContents.debugger`），不引入任何外部连接，CDP 事件按 tabId 内存缓冲（上限 5000 条）。
 
 ## 选择你的平台
 
@@ -80,7 +80,7 @@ await tab.openDevTools();                            // 打开 DevTools 窗口
 
 ## 注意
 
-- 仅适用于 **3.10.1**（脚本会核对版本）。ZCode 自动升级后请先 `Status` 查看，通常需重新适配。
+- 支持 **3.10.1 / 3.10.2**。规则引擎按内容锚点自适应，小版本构建变化自动吸收；ZCode 自动升级后先 `Status` 查看。
 - `Apply` 幂等：重复执行检测到已打补丁会自动跳过（`-Force` 强制重刷）。
 - 为什么走文件补丁：`NODE_OPTIONS` 注入被 Electron 打包白名单剥离，零文件改动路线不通（踩坑记录见 `zcode/windows/cdp-hook-archive/`）；且 Windows 构建未嵌入 asar 完整性清单，可安全修改——mac 用户务必先跑 `fuse-scan.mjs` 预检。
 - CDP 权限极高（读写页面任意状态、注入脚本），仅用于**授权范围内**的安全测试与调试。
