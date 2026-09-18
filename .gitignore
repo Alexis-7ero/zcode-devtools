@@ -29,3 +29,5 @@ zcode/payload-*.deprecated
 .tmp3102/
 workbuddy/wb556-check/
 workbuddy/wb-install-*.log
+
+.tmp3123/

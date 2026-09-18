@@ -102,12 +102,43 @@ function buildRules() {
     '  }'
   ].join('\n');
 
+  // 3.12.3+：sendGuestCdpCommand(t,r,n,o,s,a) 六参（t=record、r=guest、s=跳过视口缩放）；
+  // 缓冲键改用 record 的 tabId（o.tabId），executeCdp 由 executeInScope 的分支调用
+  function buildExecuteCdp3123(safe, stamp) {
+    const tapArrow = '(f,h,m)=>{let g=this.cdpEventBuffers.get(d);g&&(g.push({method:h,params:m}),g.length>5e3&&g.splice(0,g.length-5e3))}';
+    const taphandler = stamp ? stamp + '(' + tapArrow + ',"cdpTap")' : tapArrow;
+    const tpl = (
+    'async executeCdp(t,r,i,o,n){let a=await this.ensureGuest(i,o.controller.signal);' +
+    'if(!a||__SAFE__(()=>a.isDestroyed(),!0))return this.withMeta({ok:!1,error:{code:"backend_unavailable",message:"browser guest unavailable for cdp"},elapsedMs:Date.now()-n},t,i);' +
+    'try{a.debugger.isAttached()||a.debugger.attach("1.3")}catch{}i.cdpAttached=a.debugger.isAttached(),this.cdpEventBuffers??(this.cdpEventBuffers=new Map());' +
+    'if(!this.cdpEventBuffers.has(o.tabId)){let d=o.tabId,c=__TAPHANDLER__;' +
+    'a.debugger.on("message",c),this.cdpListeners??(this.cdpListeners=new Map()),this.cdpListeners.set(d,{guest:a,handler:c})}' +
+    'let l=r.op??"send";try{if(l==="openDevTools")return typeof a.openDevTools=="function"&&a.openDevTools(),this.withMeta({ok:!0,value:{opened:!0},elapsedMs:Date.now()-n},t,i);' +
+    'if(l==="events"){let d=this.cdpEventBuffers.get(o.tabId)??[],c=Math.min(r.limit??500,5e3),f=d.slice(-c);return r.clear===!0&&this.cdpEventBuffers.set(o.tabId,[]),' +
+    'this.withMeta({ok:!0,value:{events:f,count:f.length,totalBuffered:d.length},elapsedMs:Date.now()-n},t,i)}' +
+    'let d=r.cdpMethod;if(typeof d!="string"||d.length===0)return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp send requires cdpMethod"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
+    'let f=r.params??{};if(f===null||typeof f!="object"||Array.isArray(f))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
+    'd==="Debugger.enable"&&Promise.race([a.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((h,m)=>setTimeout(()=>m(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
+    'let m=await this.sendGuestCdpCommand(o,a,d,f,!1);return this.withMeta({ok:!0,value:m??null,elapsedMs:Date.now()-n},t,i)}' +
+    'catch(c){return this.withMeta({ok:!1,error:{code:"execution_error",message:c instanceof Error?c.message:String(c)},elapsedMs:Date.now()-n},t,i)}}recordingNow(){');
+    return tpl
+      .split('__SAFE__').join(safe)
+      .split('__TAPHANDLER__').join(taphandler);
+  }
+
   EXEC_BUILDER = buildExecuteCdp;
+  EXEC_BUILDER_3123 = buildExecuteCdp3123;
   return [
     {
       name: 'main-executor',            // asar out/main/index.js（混淆助手名按目标构建动态探测）
       dynamic: "main-executor",
+      doneIf: 'n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId)',   // 3.12.3+ 分派臂形状 → 由 main-executor-3123 处理
       marker: ',r.method==="recordingStart"){',
+    },
+    {
+      name: 'main-executor-3123',       // 3.12.3+：executeInScope 分派器（resolveTab 记录 s + 运行记录 n）
+      dynamic: "main-executor-3123",
+      marker: 'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="recordingStart"){',
     },
     {
       name: 'schema-union-generic',           // main chunk / host chunk / scheduler 三处 schema union（zod 别名自适应）
@@ -143,6 +174,7 @@ function buildRules() {
 }
 
 let EXEC_BUILDER = null;
+let EXEC_BUILDER_3123 = null;
 const RULES = buildRules();
 const LOG = makeLogger();
 
@@ -169,6 +201,17 @@ function transform(content, filename) {
     const rule = RULES[ri];
     if (rule.doneIf && out.includes(rule.doneIf)) continue;
     if (!out.includes(rule.marker)) continue;
+
+    if (rule.dynamic === 'main-executor-3123') {
+      const { safe, stamp } = detectHelpers(out);
+      const branchTo =
+        'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="cdp")return await this.executeCdp(t,r,s,n,o);' +
+        'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="recordingStart"){';
+      out = out.split(rule.marker).join(branchTo);
+      out = out.split('recordingNow(){').join(EXEC_BUILDER_3123(safe, stamp) + 'recordingNow(){');
+      LOG('[transform] main-executor-3123 (safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
+      continue;
+    }
 
     if (rule.dynamic === 'main-executor') {
       // 混淆助手名动态探测后构建替换文本
