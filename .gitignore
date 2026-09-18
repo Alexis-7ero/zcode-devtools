@@ -31,3 +31,11 @@ workbuddy/wb556-check/
 workbuddy/wb-install-*.log
 
 .tmp3123/
+.tmp-zc3123/
+zc-run/
+zc-test/
+zc-test.asar
+.tmp-zc3123/
+zc-run/
+zc-test/
+zc-test.asar

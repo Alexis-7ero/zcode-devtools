@@ -131,7 +131,7 @@ switch ($Action) {
         $ver = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
                                         'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
                 Where-Object { $_.DisplayName -match '^ZCode' }).DisplayVersion
-        Write-Host ("ZCode 版本 : " + $(if ($ver) { $ver } else { '未知' }) + "（锚点适配版本 3.10.1）")
+        Write-Host ("ZCode 版本 : " + $(if ($ver) { $ver } else { '未知' }) + "（规则引擎：内容锚点自适应，支持 3.10.1 / 3.10.2 / 3.12.3）")
 
         $mIdx = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet
         $mSch = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'literal\("cdp"\)' -Quiet

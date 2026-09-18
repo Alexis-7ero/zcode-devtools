@@ -207,8 +207,9 @@ function transform(content, filename) {
       const branchTo =
         'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="cdp")return await this.executeCdp(t,r,s,n,o);' +
         'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="recordingStart"){';
+      if (out.split(rule.marker).length - 1 !== 1) { throw new Error('3123 branch marker not unique in target'); }
       out = out.split(rule.marker).join(branchTo);
-      out = out.split('recordingNow(){').join(EXEC_BUILDER_3123(safe, stamp) + 'recordingNow(){');
+      out = out.split('async executeInScope(t,r,n){').join(EXEC_BUILDER_3123(safe, stamp) + 'async executeInScope(t,r,n){');
       LOG('[transform] main-executor-3123 (safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
       continue;
     }
