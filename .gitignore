@@ -27,3 +27,5 @@ zcode/payload-*.deprecated
 
 # 3.10.2 适配用的临时解包/测试目录
 .tmp3102/
+workbuddy/wb556-check/
+workbuddy/wb-install-*.log

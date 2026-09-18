@@ -66,13 +66,24 @@ ping -n 3 127.0.0.1 >nul
 :closed
 echo.
 
-echo [2/6] Backup -^> %BK%
+echo [2/6] Backup -^> %BK%（版本变化自动刷新）
 if not exist "%BK%" mkdir "%BK%"
+rem 版本标记：WorkBuddy 更新后旧备份作废，防止旧原版被还原到新版本上
+set "WB_VER="
+for /f "usebackq" %%V in (`powershell -NoProfile -Command "(Get-Item '%WB_EXE%').VersionInfo.ProductVersion"`) do set "WB_VER=%%V"
+set "WB_VER_MARK=%BK%\source-version.txt"
+set "WB_BAK_VER="
+if exist "%WB_VER_MARK%" set /p WB_BAK_VER=<"%WB_VER_MARK%"
+if "%WB_BAK_VER%" neq "%WB_VER%" (
+  if defined WB_BAK_VER echo        version changed %WB_BAK_VER% -^> %WB_VER% : refreshing backup ...
+  del /q "%BK%\*.original" 2>nul
+)
 if not exist "%BK%\WorkBuddy.exe" copy /y "%WB_EXE%" "%BK%\WorkBuddy.exe" >nul
 if not exist "%BK%\app.asar" copy /y "%WB_RES%\app.asar" "%BK%\app.asar" >nul
+echo %WB_VER%>"%WB_VER_MARK%"
 if not exist "%BK%\WorkBuddy.exe" goto fail
 if not exist "%BK%\app.asar" goto fail
-echo        exe + asar backup ready
+echo        exe + asar backup ready (source %WB_VER%)
 
 echo [3/6] Extract current app.asar ...
 if exist "%WORK%" rmdir /s /q "%WORK%"
