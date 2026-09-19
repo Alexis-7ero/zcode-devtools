@@ -45,3 +45,4 @@ zc-test.asar
 esm-*.txt
 archive.tar
 .tmp-diag/
+zcode/windows/backup/
