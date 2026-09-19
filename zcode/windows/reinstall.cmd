@@ -1,5 +1,5 @@
 @echo off
-rem 一键重装（自动提权 + 结束 ZCode + 还原原版 + 重新 hook）
+rem one-click reinstall (elevate + kill ZCode + restore originals + re-hook)
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     powershell -NoProfile -Command "Start-Process -Verb RunAs -FilePath '%~f0'"

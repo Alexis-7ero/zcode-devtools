@@ -66,9 +66,9 @@ ping -n 3 127.0.0.1 >nul
 :closed
 echo.
 
-echo [2/6] Backup -^> %BK%（版本变化自动刷新）
+echo [2/6] Backup -^> %BK% (auto-refresh on version change)
 if not exist "%BK%" mkdir "%BK%"
-rem 版本标记：WorkBuddy 更新后旧备份作废，防止旧原版被还原到新版本上
+rem version marker: stale backup is discarded when WorkBuddy version changes
 set "WB_VER="
 for /f "usebackq" %%V in (`powershell -NoProfile -Command "(Get-Item '%WB_EXE%').VersionInfo.ProductVersion"`) do set "WB_VER=%%V"
 set "WB_VER_MARK=%BK%\source-version.txt"
