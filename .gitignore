@@ -39,3 +39,8 @@ zc-test.asar
 zc-run/
 zc-test/
 zc-test.asar
+
+# 根目录运行时日志/临时产物
+*.log
+esm-*.txt
+archive.tar

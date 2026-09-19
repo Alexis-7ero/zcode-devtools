@@ -78,7 +78,7 @@ plugin_targets() {
   if [ -d "$CACHE_ROOT" ]; then
     while IFS= read -r d; do
       [ -f "$d/scripts/browser-client.mjs" ] && list+=("$d")
-    done < <(find "$CACHE_ROOT" -maxdepth 1 -type d -name '0.4*' 2>/dev/null)
+    done < <(find "$CACHE_ROOT" -maxdepth 1 -type d -name '0.*' 2>/dev/null)
   fi
   printf '%s\n' "${list[@]}"
 }
@@ -128,7 +128,7 @@ apply() {
   local payload="$PAYLOAD" bro="$BAK"
   [ -f "$payload/rules.cjs" ] || die "缺少 $payload/rules.cjs"
   [ -f "$payload/zcode.cjs.gz" ] || die "缺少 $payload/zcode.cjs.gz"
-  [ -f "$payload/browser-client.mjs" ] || die "缺少 $payload/browser-client.mjs"
+  [ -f "$payload/api.json" ] || die "缺少 $payload/api.json"
 
   backup_all
 
@@ -140,11 +140,12 @@ apply() {
   log "[*] 应用 Broker zcode.cjs ..."
   gzip -dc "$payload/zcode.cjs.gz" > "$BROKER"
 
-  log "[*] 应用插件文件 ..."
+  log "[*] 应用插件文件（现地变换，避免旧基底预烤文件降级插件）..."
   local t
   while IFS= read -r t; do
     [ -z "$t" ] && continue
-    cp "$payload/browser-client.mjs" "$t/scripts/browser-client.mjs"
+    CDP_RULES="$payload/rules.cjs" CDP_TARGET="$t/scripts/browser-client.mjs" \
+      node -e 'const{transform}=require(process.env.CDP_RULES);const fs=require("fs");const p=process.env.CDP_TARGET;const s=fs.readFileSync(p,"utf8");const o=transform(s,p);fs.writeFileSync(p,o);console.log(o===s?"[skip] already patched":"[ok] transformed")'
     cp "$payload/api.json" "$t/docs/api.json"
     log "    [OK] $t"
   done < <(plugin_targets)

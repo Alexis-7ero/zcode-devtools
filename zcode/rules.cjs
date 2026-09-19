@@ -209,7 +209,10 @@ function transform(content, filename) {
         'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="recordingStart"){';
       if (out.split(rule.marker).length - 1 !== 1) { throw new Error('3123 branch marker not unique in target'); }
       out = out.split(rule.marker).join(branchTo);
-      out = out.split('async executeInScope(t,r,n){').join(EXEC_BUILDER_3123(safe, stamp) + 'async executeInScope(t,r,n){');
+      const scopeHead = 'async executeInScope(t,r,n){';
+      const scopeHits = out.split(scopeHead).length - 1;
+      if (scopeHits !== 1) { throw new Error('executeInScope head not unique (' + scopeHits + ') in target'); }
+      out = out.replace(scopeHead, EXEC_BUILDER_3123(safe, stamp) + scopeHead);
       LOG('[transform] main-executor-3123 (safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
       continue;
     }

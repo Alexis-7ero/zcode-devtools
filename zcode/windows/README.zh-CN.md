@@ -1,8 +1,8 @@
 [English](README.md)
 
-# ZCode Windows CDP 补丁（3.10.1 · 一键开关）
+# ZCode Windows CDP 补丁（3.10.1 / 3.10.2 / 3.12.3 / 3.14.0 · 一键开关）
 
-在 **ZCode Desktop 3.10.1**（Windows x64）内嵌浏览器（IAB）的 Browser Use 通道上新增主机命令 `method: "cdp"`，模型可通过 `tab.cdp.*` / `tab.openDevTools()` 对当前标签页做 CDP 调试：任意 CDP 命令、事件流读取、断点/暂停/继续、打开 DevTools。
+在 **ZCode Desktop 3.10.1 / 3.10.2 / 3.12.3 / 3.14.0**（Windows x64）内嵌浏览器（IAB）的 Browser Use 通道上新增主机命令 `method: "cdp"`，模型可通过 `tab.cdp.*` / `tab.openDevTools()` 对当前标签页做 CDP 调试：任意 CDP 命令、事件流读取、断点/暂停/继续、打开 DevTools。
 
 思路源自 `Almost-Zhangsan/zcode-cdp-patch-3.7.3`，基于本机 3.10.1 安装包重新移植——复用官方已有的 `ensureGuest` / `sendGuestCdpCommand`（Electron `webContents.debugger`），不引入任何外部连接，CDP 事件按 tabId 内存缓冲（上限 5000 条）。macOS 版见姊妹仓库 [zcode-devtools-macos](https://github.com/Alexis-7ero/zcode-devtools-macos)。 `zcode-cdp-patch-macos`。
 
@@ -73,10 +73,10 @@ cdp-hook-archive/             # NODE_OPTIONS 外置注入方案的死亡踩坑�
 | Main 执行桥 | asar `out/main/index.js` | 命令分发链新增 `method === "cdp"` 分支，转调官方 `sendGuestCdpCommand` |
 | Main/Host/Scheduler Schema | asar 三个 chunk | 方法枚举 + discriminatedUnion 注册 cdp 命令对象（含 `tabId` 可选字段） |
 | Broker | `resources\glm\zcode.cjs` | 同步放行 schema |
-| 模型侧插件 | browser-use 0.4.x 缓存 | `Tab.get cdp()` 返回裸对象绕过 `hideUnknown` 白名单 |
+| 模型侧插件 | browser-use 0.4.x / 0.5.x 缓存 | `Tab.get cdp()` 返回裸对象绕过 `hideUnknown` 白名单 |
 
 ## 注意
 
-- 仅适用于 **3.10.1**（脚本会核对版本）。ZCode 自动升级后请先 `Status` 查看，通常需重新适配。
+- 适配 **3.10.1 / 3.10.2 / 3.12.3 / 3.14.0**（内容锚点自适应）。ZCode 自动升级后请先 `Status` 查看。
 - `Apply` 幂等：重复执行检测到已打补丁会自动跳过（`-Force` 强制重刷）。
 - CDP 权限极高（读写页面任意状态、注入脚本），仅用于**授权范围内**的安全测试与调试。

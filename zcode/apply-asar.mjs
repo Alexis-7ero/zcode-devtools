@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-const [, , asarPath, rulesPath, workDir] = process.argv;
+let [, , asarPath, rulesPath, workDir] = process.argv;
 if (!asarPath || !rulesPath || !workDir) {
   if (/[.]original([.][a-z0-9]+)?$/i.test(asarPath)) {
     console.error('[x] 拒绝执行：目标路径是备份文件（*.original）。请指向实际安装的 app.asar。');
@@ -22,6 +22,8 @@ if (!asarPath || !rulesPath || !workDir) {
   console.error('用法: node apply-asar.mjs <app.asar> <rules.cjs> <工作目录>');
   process.exit(2);
 }
+// 工作目录统一转绝对：pack 阶段以 workDir 为子进程 cwd，相对路径会被翻倍解析
+workDir = path.resolve(workDir);
 
 const { transform } = await import(pathToFileURL(path.resolve(rulesPath)).href);
 
@@ -55,14 +57,19 @@ function runNode(jsFile, args) {
 }
 function installAsar(dir) {
   const cli = npmCliJs();
-  const args = ['install', '--prefix', dir, '@electron/asar', '--no-audit', '--no-fund', '--loglevel=error'];
+  // 锁 4.x：打包走 CLI（bin/asar.mjs）+ 相对路径，WorkBuddy 5.5.6 构建实测的组合。
+  // API createPackageWithOptions 在 Windows 绝对路径 src 下 glob 判定失效（.unpacked 产出为 0）
+  const args = ['install', '--prefix', dir, '@electron/asar@^4.3.0', '--no-audit', '--no-fund', '--loglevel=error'];
   if (cli) runNode(cli, args);
   else execFileSync('npm', args, { stdio: 'inherit' });
 }
 function asarBin(dir) {
-  const p = path.join(dir, 'node_modules', '@electron/asar', 'bin', 'asar.mjs');
-  if (!fs.existsSync(p)) throw new Error('asar CLI 未找到: ' + p);
-  return p;
+  // 3.x 的 CLI 是 bin/asar.js，4.x 改名 bin/asar.mjs —— 两者都探测
+  for (const name of ['asar.js', 'asar.mjs']) {
+    const p = path.join(dir, 'node_modules', '@electron', 'asar', 'bin', name);
+    if (fs.existsSync(p)) return p;
+  }
+  throw new Error('asar CLI 未找到: ' + path.join(dir, 'node_modules', '@electron', 'asar', 'bin'));
 }
 
 const X = path.join(workDir, 'extracted');
@@ -145,10 +152,12 @@ if (fatal) {
 
 PROGRESS('npm','准备打包依赖');
 console.log('[*] 重新打包（原生模块保持 unpacked）...');
+// unpack glob 必须含双星前缀目录项（cli/native/node_modules/resources）：
+// 3.12.3+ 构建的 unpacked 文件分布在这些目录下，只按扩展名匹配会丢 unpacked 文件 → 启动崩溃
 fs.writeFileSync(path.join(workDir, 'pack.cjs'), `
 const { createPackageWithOptions } = require("@electron/asar");
 createPackageWithOptions(process.argv[2], process.argv[3], {
-  unpack: "{**/*.node,**/*.dll,**/*.exe,**/*.dylib,**/ffi/**}"
+  unpack: "{**/cli/**,**/native/**,**/node_modules/**,**/resources/**,**/*.node,**/*.dll,**/*.exe,**/*.dylib,**/ffi/**}"
 }).then(() => console.log("pack ok"))
   .catch((e) => { console.error(e); process.exit(1); });
 `);
@@ -159,15 +168,71 @@ try {
   process.exit(3);
 }
 PROGRESS('pack','重新打包中');
-execFileSync(process.execPath, [path.join(workDir, 'pack.cjs'), X, PACKED], { cwd: workDir, stdio: 'inherit' });
+// 打包走 CLI + 相对路径（cwd=workDir）：Windows 绝对路径下 asar API 的 glob 判定不可靠。
+// unpack 只按二进制扩展名收窄：3.14.0 原版 unpacked 恰为 12 个二进制（node-pty/ssh2），
+// 目录型宽 glob（如 **/node_modules/**）在 minimatch 10 下会把整个 node_modules 都 unpack 出去
+execFileSync(process.execPath, [
+  asarBin(workDir), 'pack',
+  'extracted', 'app.asar.new',
+  '--unpack', '{**/*.node,**/*.dll,**/*.exe,**/*.dylib,**/*.so,**/*.wasm,**/ffi/**}',
+], { cwd: workDir, stdio: 'inherit' });
 if (!fs.existsSync(PACKED) || fs.statSync(PACKED).size < 200 * 1024 * 1024) {
   console.error('[!] 打包产物异常（<200MB），中止替换');
   process.exit(3);
 }
 
+// unpacked 覆盖安全闸门：重打包后 unpacked 文件数不得低于原版的 98%（丢文件 → 启动崩溃）
+const NEW_UNPACKED = PACKED + '.unpacked';
+function countFiles(dir) {
+  let n = 0;
+  (function w(p) {
+    for (const e of fs.readdirSync(p, { withFileTypes: true })) {
+      const f = path.join(p, e.name);
+      if (e.isDirectory()) w(f); else n++;
+    }
+  })(dir);
+  return n;
+}
+if (fs.existsSync(unpackedSibling)) {
+  const before = countFiles(unpackedSibling);
+  const after = fs.existsSync(NEW_UNPACKED) ? countFiles(NEW_UNPACKED) : 0;
+  console.log(`[*] unpacked 文件数：原版 ${before} → 新包 ${after}`);
+  if (after < Math.floor(before * 0.98)) {
+    console.error('[!] 安全闸门：新包 unpacked 文件缺失（打包 glob 与构建不匹配？），中止替换，未写入任何文件');
+    process.exit(3);
+  }
+}
+
 PROGRESS('replace','替换目标文件');
 fs.copyFileSync(PACKED, asarPath);
 console.log(`[OK] 已替换 ${asarPath}（变更 ${filesChanged} 个 JS）`);
+
+// 同步 unpacked 目录：与安装处现存内容一致则不动；有差异则整体替换
+const instUnpacked = asarPath + '.unpacked';
+if (fs.existsSync(NEW_UNPACKED) && fs.existsSync(instUnpacked)) {
+  function listRel(base) {
+    const m = new Map();
+    (function w(p) {
+      for (const e of fs.readdirSync(p, { withFileTypes: true })) {
+        const f = path.join(p, e.name);
+        if (e.isDirectory()) w(f);
+        else m.set(path.relative(base, f).split(path.sep).join('/'), fs.statSync(f).size);
+      }
+    })(base);
+    return m;
+  }
+  const a = listRel(instUnpacked), b = listRel(NEW_UNPACKED);
+  let same = a.size === b.size;
+  if (same) for (const [k, v] of a) { if (b.get(k) !== v) { same = false; break; } }
+  if (same) {
+    console.log('[OK] unpacked 目录与安装处一致，无需变更');
+  } else {
+    console.log('[*] unpacked 目录有差异，同步到安装处 ...');
+    fs.rmSync(instUnpacked, { recursive: true, force: true });
+    fs.cpSync(NEW_UNPACKED, instUnpacked, { recursive: true });
+    console.log('[OK] unpacked 目录已同步');
+  }
+}
 
 }
 main().catch(e=>{console.error(e);process.exit(1);});

@@ -2,7 +2,7 @@
 
 [中文说明](README.zh-CN.md)
 
-Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser (IAB) of **ZCode Desktop 3.10.1 / 3.10.2**. After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools.
+Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built-in browser (IAB) of **ZCode Desktop 3.10.1 / 3.10.2 / 3.12.3 / 3.14.0**. After patching, the AI can use `tab.cdp.*` and `tab.openDevTools()` on in-app browser tabs: arbitrary CDP commands, event streams, breakpoints / pause / resume, and opening DevTools.
 
 > Idea credits: `Almost-Zhangsan/zcode-cdp-patch-3.7.3`. Re-ported from scratch for the 3.10.1 build and forward-verified on 3.10.2 (content-anchor rules engine, zero rule changes needed) — the patch reuses official internals (`ensureGuest` / `sendGuestCdpCommand`, Electron `webContents.debugger`) and adds no external connections. CDP events are buffered in memory per tab (cap 5000).
 
@@ -12,7 +12,7 @@ Enable the hidden CDP (Chrome DevTools Protocol) debugging channel for the built
 |----------|-------|--------|
 | Windows x64 | [`zcode/windows/cdp-patch.ps1`](zcode/windows/) — docs: [EN](zcode/windows/README.md) / [中文](zcode/windows/README.zh-CN.md) | ✅ verified on a real machine |
 | macOS | [`zcode/macos/cdp-patch.sh`](zcode/macos/) — docs: [EN](zcode/macos/README.md) / [中文](zcode/macos/README.zh-CN.md) | ⚠️ untested on a real Mac, feedback welcome |
-| **WorkBuddy 5.4.4** (Windows x64) | [`DevToolsTool.exe`](workbuddy/) — docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md) | ✅ verified on a real machine |
+| **WorkBuddy 5.4.4 / 5.5.6** (Windows x64) | [`DevToolsTool.exe`](workbuddy/) — docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md) | ✅ verified on a real machine |
 
 ## Quick start
 
@@ -42,7 +42,7 @@ node zcode/fuse-scan.mjs /Applications/ZCode.app/Contents/MacOS/ZCode   # check 
 
 ## WorkBuddy module
 
-The [`workbuddy/`](workbuddy/) directory hosts an independent module for **Tencent WorkBuddy 5.4.4**: it injects a native `browser_cdp` builtin tool (eval / screenshot / network / events / raw CDP / DevTools) for the agent built-in browser, unlocks the hidden right-click Inspect, and turns the official CDP port always-on. Run the root `DevToolsTool.exe`, press `5` to switch target to WorkBuddy, then `1` to install; `wb-patch.cmd remove` restores the originals. Full docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md).
+The [`workbuddy/`](workbuddy/) directory hosts an independent module for **Tencent WorkBuddy 5.4.4 / 5.5.6**: it injects a native `browser_cdp` builtin tool (eval / screenshot / network / events / raw CDP / DevTools) for the agent built-in browser, unlocks the hidden right-click Inspect, and turns the official CDP port always-on. Run the root `DevToolsTool.exe`, press `5` to switch target to WorkBuddy, then `1` to install; `wb-patch.cmd remove` restores the originals. Full docs: [EN](workbuddy/README.md) / [中文](workbuddy/README.zh-CN.md).
 
 ## Verify (new conversation after enabling)
 
@@ -77,12 +77,12 @@ await tab.openDevTools();                            // open DevTools window
 | Main executor | asar `out/main/index.js` | adds a `method === "cdp"` branch to the dispatch chain, delegating to official `sendGuestCdpCommand` |
 | Main/Host/Scheduler schema | three asar chunks | method enum + discriminatedUnion entry for the cdp command (with optional `tabId`) |
 | Broker | `Resources/glm/zcode.cjs` | same schema relaxation |
-| Model-side plugin | browser-use 0.4.0 cache | `Tab.get cdp()` returns a bare object to bypass the `hideUnknown` allowlist |
+| Model-side plugin | browser-use 0.4.x / 0.5.x cache | `Tab.get cdp()` returns a bare object to bypass the `hideUnknown` allowlist |
 
 
 ## Notes
 
-- Targets **3.10.1 / 3.10.2**. The rules engine matches code by content anchors, so minor build changes are absorbed automatically; after a ZCode auto-update, run `Status` first.
+- Targets **3.10.1 / 3.10.2 / 3.12.3 / 3.14.0**. The rules engine matches code by content anchors, so minor build changes are absorbed automatically; after a ZCode auto-update, run `Status` first.
 - `Apply` is idempotent: re-running on a patched install is skipped (`-Force` overrides).
 - Why a file patch? `NODE_OPTIONS` injection is stripped by Electron's allowlist in packaged apps, so zero-file-modification is impossible (post-mortem in `zcode/windows/cdp-hook-archive/`). And the Windows build embeds no `ElectronAsarIntegrity` manifest, so the asar can be modified safely — mac users must run `fuse-scan.mjs` preflight first.
 - CDP is extremely powerful (read/write any page state, inject scripts). Use **only against authorized targets**.

@@ -8,7 +8,7 @@
 #   .\cdp-patch.ps1 Remove                停用补丁，整包还原原版
 #
 # 依赖：Node.js + npm。首次 Apply 整包备份原版 asar 到 backup\app.asar.original。
-# 适配版本：3.10.1（Status 会显示实际版本；锚点未命中时变换器会安全中止）
+# 适配版本：3.10.1 / 3.10.2 / 3.12.3 / 3.14.0（Status 会显示实际版本；锚点未命中时变换器会安全中止）
 
 param(
     [Parameter(Position = 0)]
@@ -106,10 +106,27 @@ function Get-PluginTargets {
     $cacheRoot = "$env:USERPROFILE\.zcode\cli\plugins\cache\zcode-plugins-official\browser-use"
     if (Test-Path $cacheRoot) {
         $list += Get-ChildItem $cacheRoot -Directory |
-            Where-Object { $_.Name -like '0.4*' -and (Test-Path (Join-Path $_.FullName 'scripts\browser-client.mjs')) } |
+            Where-Object { $_.Name -like '0.*' -and (Test-Path (Join-Path $_.FullName 'scripts\browser-client.mjs')) } |
             ForEach-Object { $_.FullName }
     }
     return $list
+}
+
+# 插件脚本按目标版本现地变换（规则引擎锚点自适应），避免复制旧基底的预烤文件造成插件降级；
+# transform 自带 doneIf 幂等（已含 get cdp() 时原样返回）
+function Update-PluginFiles([string]$JsonSrc, [string]$Label) {
+    $nodeScript = 'const{transform}=require(process.env.CDP_RULES);const fs=require("fs");const p=process.env.CDP_TARGET;const s=fs.readFileSync(p,"utf8");const o=transform(s,p);fs.writeFileSync(p,o);console.log(o===s?"[skip] already patched":"[ok] transformed")'
+    foreach ($t in (Get-PluginTargets)) {
+        $client = "$t\scripts\browser-client.mjs"
+        if (Test-Path $client) {
+            $env:CDP_RULES = Join-Path $REPO 'rules.cjs'
+            $env:CDP_TARGET = $client
+            try { node -e $nodeScript; if ($LASTEXITCODE -ne 0) { throw "插件变换失败: $client" } }
+            finally { Remove-Item Env:CDP_RULES, Env:CDP_TARGET -ErrorAction SilentlyContinue }
+        }
+        Copy-Item $JsonSrc "$t\docs\api.json" -Force
+        Write-Host "[OK] $Label 插件: $t"
+    }
 }
 
 function Set-PluginFiles([string]$MjsSrc, [string]$JsonSrc, [string]$Label) {
@@ -131,7 +148,7 @@ switch ($Action) {
         $ver = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
                                         'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
                 Where-Object { $_.DisplayName -match '^ZCode' }).DisplayVersion
-        Write-Host ("ZCode 版本 : " + $(if ($ver) { $ver } else { '未知' }) + "（规则引擎：内容锚点自适应，支持 3.10.1 / 3.10.2 / 3.12.3）")
+        Write-Host ("ZCode 版本 : " + $(if ($ver) { $ver } else { '未知' }) + "（规则引擎：内容锚点自适应，支持 3.10.1 / 3.10.2 / 3.12.3 / 3.14.0）")
 
         $mIdx = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet
         $mSch = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'literal\("cdp"\)' -Quiet
@@ -143,9 +160,8 @@ switch ($Action) {
 
         $first = (Get-PluginTargets | Select-Object -First 1)
         if ($first) {
-            $pOk = (Get-FileHash "$first\scripts\browser-client.mjs" -Algorithm SHA256).Hash -eq
-                   (Get-FileHash (Join-Path $REPO 'browser-client.mjs') -Algorithm SHA256).Hash
-            Write-Host "  [$(if ($pOk) { 'Patched' } else { 'Clean' })] 插件(0.4.x)"
+            $pOk = Select-String -LiteralPath "$first\scripts\browser-client.mjs" -Pattern 'get cdp\(\)' -Quiet
+            Write-Host "  [$(if ($pOk) { 'Patched' } else { 'Clean' })] 插件(browser-use)"
         }
 
         Write-Host ''
@@ -159,10 +175,9 @@ switch ($Action) {
         }
         Wait-ZcodeExit
 
-        foreach ($f in @('rules.cjs', 'zcode.cjs.gz', 'browser-client.mjs', 'api.json')) {
+        foreach ($f in @('rules.cjs', 'zcode.cjs.gz', 'api.json')) {
             if (-not (Test-Path (Join-Path $REPO $f))) { throw "缺少共享文件 $f" }
         }
-        $pluginPatched = Join-Path $REPO 'browser-client.mjs'
 
         # 首次：整包备份（Remove 的唯一依据）；ZCode 版本变化时刷新备份，防止旧原版被还原到新版本上
         New-Item $BAK -ItemType Directory -Force | Out-Null
@@ -199,7 +214,7 @@ switch ($Action) {
         $gs.CopyTo($out); $out.Close(); $gs.Close(); $gz.Close()
         Write-Host '[OK] Broker 已替换'
 
-        Set-PluginFiles $pluginPatched (Join-Path $REPO 'api.json') '应用'
+        Update-PluginFiles (Join-Path $REPO 'api.json') '应用'
 
         Write-Host ''
         Write-Host '✅ 补丁已启用。启动 ZCode 新开对话验证：tab.cdp.evaluate("1+1") / tab.openDevTools()'
