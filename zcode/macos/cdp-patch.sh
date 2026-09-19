@@ -144,8 +144,7 @@ apply() {
   local t
   while IFS= read -r t; do
     [ -z "$t" ] && continue
-    CDP_RULES="$payload/rules.cjs" CDP_TARGET="$t/scripts/browser-client.mjs" \
-      node -e 'const{transform}=require(process.env.CDP_RULES);const fs=require("fs");const p=process.env.CDP_TARGET;const s=fs.readFileSync(p,"utf8");const o=transform(s,p);fs.writeFileSync(p,o);console.log(o===s?"[skip] already patched":"[ok] transformed")'
+    node "$payload/transform-inplace.cjs" "$payload/rules.cjs" "$t/scripts/browser-client.mjs"
     cp "$payload/api.json" "$t/docs/api.json"
     log "    [OK] $t"
   done < <(plugin_targets)

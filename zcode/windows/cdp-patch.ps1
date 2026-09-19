@@ -113,16 +113,17 @@ function Get-PluginTargets {
 }
 
 # 插件脚本按目标版本现地变换（规则引擎锚点自适应），避免复制旧基底的预烤文件造成插件降级；
-# transform 自带 doneIf 幂等（已含 get cdp() 时原样返回）
+# transform 自带 doneIf 幂等（已含 get cdp() 时原样返回）。
+# 变换走独立 .cjs 辅助脚本：PowerShell 5.1 向 node 传参会吞内嵌双引号，node -e 内联脚本不可靠
 function Update-PluginFiles([string]$JsonSrc, [string]$Label) {
-    $nodeScript = 'const{transform}=require(process.env.CDP_RULES);const fs=require("fs");const p=process.env.CDP_TARGET;const s=fs.readFileSync(p,"utf8");const o=transform(s,p);fs.writeFileSync(p,o);console.log(o===s?"[skip] already patched":"[ok] transformed")'
+    $helper = Join-Path $REPO 'transform-inplace.cjs'
+    $rules  = Join-Path $REPO 'rules.cjs'
+    if (-not (Test-Path $helper)) { throw "缺少共享文件 $helper" }
     foreach ($t in (Get-PluginTargets)) {
         $client = "$t\scripts\browser-client.mjs"
         if (Test-Path $client) {
-            $env:CDP_RULES = Join-Path $REPO 'rules.cjs'
-            $env:CDP_TARGET = $client
-            try { node -e $nodeScript; if ($LASTEXITCODE -ne 0) { throw "插件变换失败: $client" } }
-            finally { Remove-Item Env:CDP_RULES, Env:CDP_TARGET -ErrorAction SilentlyContinue }
+            node $helper $rules $client
+            if ($LASTEXITCODE -ne 0) { throw "插件变换失败: $client" }
         }
         Copy-Item $JsonSrc "$t\docs\api.json" -Force
         Write-Host "[OK] $Label 插件: $t"
@@ -169,43 +170,44 @@ switch ($Action) {
     }
 
     'Apply' {
-        if (-not $Force) {
-            $already = (Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet)
-            if ($already) { Write-Host '检测到已是补丁状态，跳过（-Force 可强制重刷）'; break }
-        }
         Wait-ZcodeExit
 
-        foreach ($f in @('rules.cjs', 'zcode.cjs.gz', 'api.json')) {
+        foreach ($f in @('rules.cjs', 'zcode.cjs.gz', 'api.json', 'transform-inplace.cjs')) {
             if (-not (Test-Path (Join-Path $REPO $f))) { throw "缺少共享文件 $f" }
         }
 
-        # 首次：整包备份（Remove 的唯一依据）；ZCode 版本变化时刷新备份，防止旧原版被还原到新版本上
-        New-Item $BAK -ItemType Directory -Force | Out-Null
-        $exeVer = (Get-Item "$ZCODE\ZCode.exe").VersionInfo.ProductVersion
-        $verMark = Join-Path $BAK 'source-version.txt'
-        $staleBackup = (Test-Path "$BAK\app.asar.original") -and ((-not (Test-Path $verMark)) -or ((Get-Content $verMark -Raw -ErrorAction SilentlyContinue).Trim() -ne $exeVer))
-        if ($staleBackup) {
-            Write-Host "[*] 检测到 ZCode 版本变化：刷新整包备份（当前 $exeVer）..."
-            Remove-Item "$BAK\*.original" -Force
-        }
-        if (-not (Test-Path "$BAK\app.asar.original")) {
-            Write-Host '[*] 首次运行：整包备份原版 app.asar（约 300MB，一次性）...'
-            Copy-Item "$ZCODE\resources\app.asar" "$BAK\app.asar.original"
-        }
-        if (-not (Test-Path "$BAK\zcode.cjs.original")) {
-            Copy-Item "$ZCODE\resources\glm\zcode.cjs" "$BAK\zcode.cjs.original"
-        }
-        $firstPlugin = (Get-PluginTargets | Select-Object -First 1)
-        if ($firstPlugin -and -not (Test-Path "$BAK\browser-client.mjs.original")) {
-            Copy-Item "$firstPlugin\scripts\browser-client.mjs" "$BAK\browser-client.mjs.original"
-            Copy-Item "$firstPlugin\docs\api.json" "$BAK\api.json.original"
-        }
+        $asarDone = (Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet)
+        if ($asarDone -and -not $Force) {
+            Write-Host '[*] app.asar 已是补丁状态：跳过 asar 重刷，校准 Broker 与插件（-Force 可强制重刷 asar）'
+        } else {
+            # 首次：整包备份（Remove 的唯一依据）；ZCode 版本变化时刷新备份，防止旧原版被还原到新版本上
+            New-Item $BAK -ItemType Directory -Force | Out-Null
+            $exeVer = (Get-Item "$ZCODE\ZCode.exe").VersionInfo.ProductVersion
+            $verMark = Join-Path $BAK 'source-version.txt'
+            $staleBackup = (Test-Path "$BAK\app.asar.original") -and ((-not (Test-Path $verMark)) -or ((Get-Content $verMark -Raw -ErrorAction SilentlyContinue).Trim() -ne $exeVer))
+            if ($staleBackup) {
+                Write-Host "[*] 检测到 ZCode 版本变化：刷新整包备份（当前 $exeVer）..."
+                Remove-Item "$BAK\*.original" -Force
+            }
+            if (-not (Test-Path "$BAK\app.asar.original")) {
+                Write-Host '[*] 首次运行：整包备份原版 app.asar（约 300MB，一次性）...'
+                Copy-Item "$ZCODE\resources\app.asar" "$BAK\app.asar.original"
+            }
+            if (-not (Test-Path "$BAK\zcode.cjs.original")) {
+                Copy-Item "$ZCODE\resources\glm\zcode.cjs" "$BAK\zcode.cjs.original"
+            }
+            $firstPlugin = (Get-PluginTargets | Select-Object -First 1)
+            if ($firstPlugin -and -not (Test-Path "$BAK\browser-client.mjs.original")) {
+                Copy-Item "$firstPlugin\scripts\browser-client.mjs" "$BAK\browser-client.mjs.original"
+                Copy-Item "$firstPlugin\docs\api.json" "$BAK\api.json.original"
+            }
 
-        Set-Content -Path $verMark -Value $exeVer
-        Write-Host '[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）...'
-        node $APPLY "$ZCODE\resources\app.asar" (Join-Path $REPO 'rules.cjs') (Join-Path $env:TEMP ('zcode-win-apply-' + [IO.Path]::GetRandomFileName()))
-        if ($LASTEXITCODE -eq 4) { throw '目标已是补丁状态：请先执行 Remove（或菜单[3]）还原原版后再 Apply' }
-        if ($LASTEXITCODE -ne 0) { throw 'asar 变换失败' }
+            Set-Content -Path $verMark -Value $exeVer
+            Write-Host '[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）...'
+            node $APPLY "$ZCODE\resources\app.asar" (Join-Path $REPO 'rules.cjs') (Join-Path $env:TEMP ('zcode-win-apply-' + [IO.Path]::GetRandomFileName()))
+            if ($LASTEXITCODE -eq 4) { throw '目标已是补丁状态：请先执行 Remove（或菜单[3]）还原原版后再 Apply' }
+            if ($LASTEXITCODE -ne 0) { throw 'asar 变换失败' }
+        }
 
         Write-Host '[*] 应用 Broker zcode.cjs ...'
         $gz = [IO.File]::OpenRead((Join-Path $REPO 'zcode.cjs.gz'))
