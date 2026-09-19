@@ -120,7 +120,7 @@ function buildRules() {
     'let f=r.params??{};if(f===null||typeof f!="object"||Array.isArray(f))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
     'd==="Debugger.enable"&&Promise.race([a.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((h,m)=>setTimeout(()=>m(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
     'let m=await this.sendGuestCdpCommand(o,a,d,f,!1);return this.withMeta({ok:!0,value:m??null,elapsedMs:Date.now()-n},t,i)}' +
-    'catch(c){return this.withMeta({ok:!1,error:{code:"execution_error",message:c instanceof Error?c.message:String(c)},elapsedMs:Date.now()-n},t,i)}}recordingNow(){');
+    'catch(c){return this.withMeta({ok:!1,error:{code:"execution_error",message:c instanceof Error?c.message:String(c)},elapsedMs:Date.now()-n},t,i)}}');
     return tpl
       .split('__SAFE__').join(safe)
       .split('__TAPHANDLER__').join(taphandler);
