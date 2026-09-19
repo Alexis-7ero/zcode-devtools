@@ -44,3 +44,4 @@ zc-test.asar
 *.log
 esm-*.txt
 archive.tar
+.tmp-diag/
