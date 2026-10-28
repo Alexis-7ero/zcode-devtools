@@ -46,3 +46,4 @@ esm-*.txt
 archive.tar
 .tmp-diag/
 zcode/windows/backup/
+workbuddy/*.asar

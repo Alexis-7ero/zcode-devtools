@@ -119,7 +119,7 @@ function buildRules() {
     'let d=r.cdpMethod;if(typeof d!="string"||d.length===0)return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp send requires cdpMethod"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
     'let f=r.params??{};if(f===null||typeof f!="object"||Array.isArray(f))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
     'd==="Debugger.enable"&&Promise.race([a.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((h,m)=>setTimeout(()=>m(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
-    'let m=await this.sendGuestCdpCommand(o,a,d,f,!1);return this.withMeta({ok:!0,value:m??null,elapsedMs:Date.now()-n},t,i)}' +
+    'let m=await this.sendGuestCdpCommand(i,a,d,f,!1);return this.withMeta({ok:!0,value:m??null,elapsedMs:Date.now()-n},t,i)}' +
     'catch(c){return this.withMeta({ok:!1,error:{code:"execution_error",message:c instanceof Error?c.message:String(c)},elapsedMs:Date.now()-n},t,i)}}');
     return tpl
       .split('__SAFE__').join(safe)
@@ -154,15 +154,16 @@ function buildRules() {
 
   return [
     {
-      name: 'main-executor',            // asar out/main/index.js（混淆助手名按目标构建动态探测）
+      name: 'main-executor',            // asar out/main/index.js（3.10.x 固定 o/i 形状）
       dynamic: "main-executor",
-      doneIf: 'n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId)',   // 3.12.3+ 分派臂形状 → 由 main-executor-3123 处理
+      doneIf: 'r.method==="cdp")return await this.executeCdp',
       marker: ',r.method==="recordingStart"){',
     },
     {
-      name: 'main-executor-3123',       // 3.12.3+：executeInScope 分派器（resolveTab 记录 s + 运行记录 n）
+      name: 'main-executor-3123',       // 3.12.3+：executeInScope 分派器（变量名跨版本变化，正则自适应）
       dynamic: "main-executor-3123",
-      marker: 'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="recordingStart"){',
+      doneIf: 'r.method==="cdp")return await this.executeCdp',   // 3.10.x 规则先执行并命中后跳过，防止双重注入
+      marker: ',r.method==="recordingStart"){',
     },
     {
       name: 'schema-union-generic',           // main chunk / host chunk / scheduler 三处 schema union（zod 别名自适应）
@@ -235,21 +236,39 @@ function transform(content, filename) {
     if (!out.includes(rule.marker)) continue;
 
     if (rule.dynamic === 'main-executor-3123') {
+      // 分派臂正则：if(X.tabId=Y.tabId,this.refreshRuntimeProtection(Y.tabId),r.method==="recordingStart"){
+      // X=控制器变量、Y=resolveTab 的 tab 记录变量；3.12.3=n/s、3.14.0=n/s、3.16.3=n/i，逐版本漂移
       const { safe, stamp } = detectHelpers(out);
+      const ARM_RE = /if\((\w+)\.tabId=(\w+)\.tabId,this\.refreshRuntimeProtection\(\2\.tabId\),r\.method==="recordingStart"\)\{/;
+      const m = out.match(ARM_RE);
+      const armCount = out.split(',r.method==="recordingStart"){').length - 1;
+      if (!m) {
+        if (armCount > 0) { throw new Error('recordingStart arm present but does not match expected shape (new build?)'); }
+        continue;
+      }
+      const scopeHeadRe = /async executeInScope\(t,r,n\)\{let (\w+)=Date\.now\(\);/;
+      const hm = out.match(scopeHeadRe);
+      if (!hm) { throw new Error('executeInScope head with Date.now start not found'); }
+      const ctrl = m[1], tabv = m[2], startv = hm[1];
+      const arm = m[0];
+      const armHits = out.split(arm).length - 1;
+      if (armHits !== 1) { throw new Error('dispatcher arm not unique (' + armHits + ')'); }
       const branchTo =
-        'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="cdp")return await this.executeCdp(t,r,s,n,o);' +
-        'if(n.tabId=s.tabId,this.refreshRuntimeProtection(s.tabId),r.method==="recordingStart"){';
-      if (out.split(rule.marker).length - 1 !== 1) { throw new Error('3123 branch marker not unique in target'); }
-      out = out.split(rule.marker).join(branchTo);
-      const scopeHead = 'async executeInScope(t,r,n){';
+        'if(' + ctrl + '.tabId=' + tabv + '.tabId,this.refreshRuntimeProtection(' + tabv + '.tabId),r.method==="cdp")' +
+        'return await this.executeCdp(t,r,' + tabv + ',' + ctrl + ',' + startv + ');' + arm;
+      out = out.replace(arm, branchTo);
+      const scopeHead = 'async executeInScope(t,r,n){let ' + startv + '=Date.now();';
       const scopeHits = out.split(scopeHead).length - 1;
-      if (scopeHits !== 1) { throw new Error('executeInScope head not unique (' + scopeHits + ') in target'); }
+      if (scopeHits !== 1) { throw new Error('executeInScope head not unique (' + scopeHits + ')'); }
       out = out.replace(scopeHead, EXEC_BUILDER_3123(safe, stamp) + scopeHead);
-      LOG('[transform] main-executor-3123 (safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
+      LOG('[transform] main-executor-3123 (ctrl=' + ctrl + ', tab=' + tabv + ', start=' + startv + ', safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
       continue;
     }
 
     if (rule.dynamic === 'main-executor') {
+      // 3.10.x 固定形状；若只存在 3.12.3+ 形状（无 o.tabId=i.tabId 臂），交由 3123 规则处理，避免误注 recordingNow
+      const OLD_ARM = 'if(o.tabId=i.tabId,this.refreshRuntimeProtection(i.tabId),r.method==="recordingStart"){';
+      if (!out.includes(OLD_ARM)) continue;
       // 混淆助手名动态探测后构建替换文本
       const { safe, stamp } = detectHelpers(out);
       const branchTo =
