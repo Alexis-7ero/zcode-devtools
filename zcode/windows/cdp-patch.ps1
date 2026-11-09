@@ -8,7 +8,7 @@
 #   .\cdp-patch.ps1 Remove                停用补丁，整包还原原版
 #
 # 依赖：Node.js + npm。首次 Apply 整包备份原版 asar 到 backup\app.asar.original。
-# 适配版本：3.10.1 / 3.10.2 / 3.12.3 / 3.14.0 / 3.16.3（Status 会显示实际版本；锚点未命中时变换器会安全中止）
+# 适配版本：3.10.1 / 3.10.2 / 3.12.3 / 3.14.0 / 3.16.3 / 3.17.2（Status 会显示实际版本；锚点未命中时变换器会安全中止）
 
 param(
     [Parameter(Position = 0)]
@@ -149,7 +149,7 @@ switch ($Action) {
         $ver = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
                                         'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
                 Where-Object { $_.DisplayName -match '^ZCode' }).DisplayVersion
-        Write-Host ("ZCode 版本 : " + $(if ($ver) { $ver } else { '未知' }) + "（规则引擎：内容锚点自适应，支持 3.10.1 / 3.10.2 / 3.12.3 / 3.14.0 / 3.16.3）")
+        Write-Host ("ZCode 版本 : " + $(if ($ver) { $ver } else { '未知' }) + "（规则引擎：内容锚点自适应，支持 3.10.1 / 3.10.2 / 3.12.3 / 3.14.0 / 3.16.3 / 3.17.2）")
 
         $mIdx = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet
         $mSch = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'literal\("cdp"\)' -Quiet

@@ -47,3 +47,5 @@ archive.tar
 .tmp-diag/
 zcode/windows/backup/
 workbuddy/*.asar
+ZCode-3.14.3/
+ZCode-3.14.3.zip
