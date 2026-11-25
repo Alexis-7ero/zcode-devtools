@@ -153,8 +153,10 @@ switch ($Action) {
 
         $mIdx = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet
         $mSch = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'literal\("cdp"\)' -Quiet
+        $mTpl = Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern '__cdpCtx' -Quiet
         $a = if ($mIdx -and $mSch) { 'Patched' } elseif (-not $mIdx -and -not $mSch) { 'Clean' } else { 'Unknown' }
         Write-Host "  [$a] app.asar 主进程桥/schema"
+        if ($mIdx -and -not $mTpl) { Write-Host '  [!!] app.asar 使用旧版注入模板（运行期助手遮蔽风险）——重新执行安装即可自动重建' -ForegroundColor Yellow }
 
         $hit = Select-String -LiteralPath "$ZCODE\resources\glm\zcode.cjs" -Pattern 'literal\("cdp"\)' -Quiet
         Write-Host "  [$(if ($hit) { 'Patched' } else { 'Clean' })] glm\zcode.cjs Broker"
@@ -176,7 +178,14 @@ switch ($Action) {
             if (-not (Test-Path (Join-Path $REPO $f))) { throw "缺少共享文件 $f" }
         }
 
-        $asarDone = (Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet)
+        # 「已是补丁」判定必须带当前模板标记：旧模板（如 3.14.0~4.0 的 t,r,i,o,n 命名）
+        # 即使带 executeCdp 也可能在运行时被模块级助手遮蔽 → 识别为需重刷，自愈
+        $asarHasBranch = (Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern 'executeCdp' -Quiet)
+        $asarHasCurrentTpl = (Select-String -LiteralPath "$ZCODE\resources\app.asar" -Pattern '__cdpCtx' -Quiet)
+        $asarDone = ($asarHasBranch -and $asarHasCurrentTpl)
+        if ($asarHasBranch -and -not $asarHasCurrentTpl) {
+            Write-Host '[*] 检测到旧版补丁模板：将重新构建 app.asar（修复运行期助手遮蔽问题）'
+        }
         if ($asarDone -and -not $Force) {
             Write-Host '[*] app.asar 已是补丁状态：跳过 asar 重刷，校准 Broker 与插件（-Force 可强制重刷 asar）'
         } else {
@@ -203,6 +212,14 @@ switch ($Action) {
             }
 
             Set-Content -Path $verMark -Value $exeVer
+
+            # 旧模板 → 需要重刷：先还原原版（apply-asar 拒绝在已补丁的包上叠加）
+            if ($asarHasBranch) {
+                if (-not (Test-Path "$BAK\app.asar.original")) { throw '已是补丁状态但缺少原版备份，无法安全重建；请手动处理' }
+                Write-Host '[*] 还原原版 app.asar 后重建 ...'
+                Copy-Item "$BAK\app.asar.original" "$ZCODE\resources\app.asar" -Force
+            }
+
             Write-Host '[*] 应用 Main/Host/Scheduler asar 补丁（规则引擎）...'
             node $APPLY "$ZCODE\resources\app.asar" (Join-Path $REPO 'rules.cjs') (Join-Path $env:TEMP ('zcode-win-apply-' + [IO.Path]::GetRandomFileName()))
             if ($LASTEXITCODE -eq 4) { throw '目标已是补丁状态：请先执行 Remove（或菜单[3]）还原原版后再 Apply' }

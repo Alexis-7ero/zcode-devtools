@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
 let [, , asarPath, rulesPath, workDir] = process.argv;
 if (!asarPath || !rulesPath || !workDir) {
@@ -148,6 +148,21 @@ else if (cdpSchemaFiles.length < 2) console.warn('[!] cdp schema 仅命中 1 份
 if (fatal) {
   console.error('[!] ' + fatal + ' 已中止，未写入任何文件。请将本输出发给维护者。');
   process.exit(3);
+}
+
+// 注入代码运行时自测：静态检查看不出「参数遮蔽模块级助手」这类问题
+// （4.0 的命名戳助手就叫 i，与旧模板第三个参数 i 撞名 → 运行时 "i is not a function"）
+const selfTest = path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-execute-cdp.cjs');
+if (fs.existsSync(selfTest)) {
+  console.log('[*] 注入代码运行时自测 ...');
+  try {
+    execFileSync(process.execPath, [selfTest, path.join(X, 'out', 'main', 'index.js')], { stdio: 'inherit' });
+  } catch (e) {
+    console.error('[!] 注入代码自测未通过，已中止，未写入任何文件（避免装出运行时报错的包）');
+    process.exit(3);
+  }
+} else {
+  console.warn('[!] 未找到 test-execute-cdp.cjs，跳过运行时自测');
 }
 
 PROGRESS('npm','准备打包依赖');

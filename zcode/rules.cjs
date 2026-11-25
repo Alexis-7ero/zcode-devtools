@@ -22,23 +22,27 @@ function buildRules() {
 
   const CDP_BRANCH =
     'if(o.tabId=i.tabId,this.refreshRuntimeProtection(i.tabId),r.method==="cdp")return await this.executeCdp(t,r,i,o,n);';
+  // 注入方法的局部标识符一律用 __cdp* 前缀：
+  // 压缩后的构建里模块级助手名可能恰好与短参数名同名（4.0 的命名戳助手就叫 i，
+  // 与模板第三个参数 i 撞名 → 参数遮蔽助手 → "i is not a function"）。
+  // 短名（t/r/i/o/n/a/d/c/f/l/m）会被压缩器复用，__cdp 前缀则不会。
   function buildExecuteCdp(safe, stamp) {
-    const tapArrow = '(f,h,m)=>{let g=this.cdpEventBuffers.get(d);g&&(g.push({method:h,params:m}),g.length>5e3&&g.splice(0,g.length-5e3))}';
+    const tapArrow = '(__cdpEv,__cdpM,__cdpP)=>{let __cdpB=this.cdpEventBuffers.get(__cdpKey);__cdpB&&(__cdpB.push({method:__cdpM,params:__cdpP}),__cdpB.length>5e3&&__cdpB.splice(0,__cdpB.length-5e3))}';
     const taphandler = stamp ? stamp + '(' + tapArrow + ',"cdpTap")' : tapArrow;
     const tpl = (
-    'async executeCdp(t,r,i,o,n){let a=await this.ensureGuest(i,o.controller.signal);' +
-    'if(!a||__SAFE__(()=>a.isDestroyed(),!0))return this.withMeta({ok:!1,error:{code:"backend_unavailable",message:"browser guest unavailable for cdp"},elapsedMs:Date.now()-n},t,i);' +
-    'try{a.debugger.isAttached()||a.debugger.attach("1.3")}catch{}i.cdpAttached=a.debugger.isAttached(),this.cdpEventBuffers??(this.cdpEventBuffers=new Map());' +
-    'if(!this.cdpEventBuffers.has(i.tabId)){let d=i.tabId,c=__TAPHANDLER__;' +
-    'a.debugger.on("message",c),this.cdpListeners??(this.cdpListeners=new Map()),this.cdpListeners.set(d,{guest:a,handler:c})}' +
-    'let l=r.op??"send";try{if(l==="openDevTools")return typeof a.openDevTools=="function"&&a.openDevTools(),this.withMeta({ok:!0,value:{opened:!0},elapsedMs:Date.now()-n},t,i);' +
-    'if(l==="events"){let d=this.cdpEventBuffers.get(i.tabId)??[],c=Math.min(r.limit??500,5e3),f=d.slice(-c);return r.clear===!0&&this.cdpEventBuffers.set(i.tabId,[]),' +
-    'this.withMeta({ok:!0,value:{events:f,count:f.length,totalBuffered:d.length},elapsedMs:Date.now()-n},t,i)}' +
-    'let d=r.cdpMethod;if(typeof d!="string"||d.length===0)return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp send requires cdpMethod"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
-    'let f=r.params??{};if(f===null||typeof f!="object"||Array.isArray(f))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
-    'd==="Debugger.enable"&&Promise.race([a.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((h,m)=>setTimeout(()=>m(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
-    'let m=await this.sendGuestCdpCommand(i,a,d,f);return this.withMeta({ok:!0,value:m??null,elapsedMs:Date.now()-n},t,i)}' +
-    'catch(c){return this.withMeta({ok:!1,error:{code:"execution_error",message:c instanceof Error?c.message:String(c)},elapsedMs:Date.now()-n},t,i)}}recordingNow(){');
+    'async executeCdp(__cdpCtx,__cdpCmd,__cdpTab,__cdpRun,__cdpT0){let __cdpGuest=await this.ensureGuest(__cdpTab,__cdpRun.controller.signal);' +
+    'if(!__cdpGuest||__SAFE__(()=>__cdpGuest.isDestroyed(),!0))return this.withMeta({ok:!1,error:{code:"backend_unavailable",message:"browser guest unavailable for cdp"},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    'try{__cdpGuest.debugger.isAttached()||__cdpGuest.debugger.attach("1.3")}catch{}__cdpTab.cdpAttached=__cdpGuest.debugger.isAttached(),this.cdpEventBuffers??(this.cdpEventBuffers=new Map());' +
+    'if(!this.cdpEventBuffers.has(__cdpTab.tabId)){let __cdpKey=__cdpTab.tabId,__cdpHandler=__TAPHANDLER__;' +
+    '__cdpGuest.debugger.on("message",__cdpHandler),this.cdpListeners??(this.cdpListeners=new Map()),this.cdpListeners.set(__cdpKey,{guest:__cdpGuest,handler:__cdpHandler})}' +
+    'let __cdpOp=__cdpCmd.op??"send";try{if(__cdpOp==="openDevTools")return typeof __cdpGuest.openDevTools=="function"&&__cdpGuest.openDevTools(),this.withMeta({ok:!0,value:{opened:!0},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    'if(__cdpOp==="events"){let __cdpBuf=this.cdpEventBuffers.get(__cdpTab.tabId)??[],__cdpLim=Math.min(__cdpCmd.limit??500,5e3),__cdpSlice=__cdpBuf.slice(-__cdpLim);return __cdpCmd.clear===!0&&this.cdpEventBuffers.set(__cdpTab.tabId,[]),' +
+    'this.withMeta({ok:!0,value:{events:__cdpSlice,count:__cdpSlice.length,totalBuffered:__cdpBuf.length},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab)}' +
+    'let __cdpMethod=__cdpCmd.cdpMethod;if(typeof __cdpMethod!="string"||__cdpMethod.length===0)return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp send requires cdpMethod"},sideEffect:"none",elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    'let __cdpParams=__cdpCmd.params??{};if(__cdpParams===null||typeof __cdpParams!=="object"||Array.isArray(__cdpParams))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    '__cdpMethod==="Debugger.enable"&&Promise.race([__cdpGuest.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((__cdpRes,__cdpRej)=>setTimeout(()=>__cdpRej(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
+    'let __cdpOut=await this.sendGuestCdpCommand(__cdpTab,__cdpGuest,__cdpMethod,__cdpParams);return this.withMeta({ok:!0,value:__cdpOut??null,elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab)}' +
+    'catch(__cdpErr){return this.withMeta({ok:!1,error:{code:"execution_error",message:__cdpErr instanceof Error?__cdpErr.message:String(__cdpErr)},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab)}}recordingNow(){');
     return tpl
       .split('__SAFE__').join(safe)
       .split('__TAPHANDLER__').join(taphandler);
@@ -105,22 +109,22 @@ function buildRules() {
   // 3.12.3+：sendGuestCdpCommand(t,r,n,o,s,a) 六参（t=record、r=guest、s=跳过视口缩放）；
   // 缓冲键改用 record 的 tabId（o.tabId），executeCdp 由 executeInScope 的分支调用
   function buildExecuteCdp3123(safe, stamp) {
-    const tapArrow = '(f,h,m)=>{let g=this.cdpEventBuffers.get(d);g&&(g.push({method:h,params:m}),g.length>5e3&&g.splice(0,g.length-5e3))}';
+    const tapArrow = '(__cdpEv,__cdpM,__cdpP)=>{let __cdpB=this.cdpEventBuffers.get(__cdpKey);__cdpB&&(__cdpB.push({method:__cdpM,params:__cdpP}),__cdpB.length>5e3&&__cdpB.splice(0,__cdpB.length-5e3))}';
     const taphandler = stamp ? stamp + '(' + tapArrow + ',"cdpTap")' : tapArrow;
     const tpl = (
-    'async executeCdp(t,r,i,o,n){let a=await this.ensureGuest(i,o.controller.signal);' +
-    'if(!a||__SAFE__(()=>a.isDestroyed(),!0))return this.withMeta({ok:!1,error:{code:"backend_unavailable",message:"browser guest unavailable for cdp"},elapsedMs:Date.now()-n},t,i);' +
-    'try{a.debugger.isAttached()||a.debugger.attach("1.3")}catch{}i.cdpAttached=a.debugger.isAttached(),this.cdpEventBuffers??(this.cdpEventBuffers=new Map());' +
-    'if(!this.cdpEventBuffers.has(o.tabId)){let d=o.tabId,c=__TAPHANDLER__;' +
-    'a.debugger.on("message",c),this.cdpListeners??(this.cdpListeners=new Map()),this.cdpListeners.set(d,{guest:a,handler:c})}' +
-    'let l=r.op??"send";try{if(l==="openDevTools")return typeof a.openDevTools=="function"&&a.openDevTools(),this.withMeta({ok:!0,value:{opened:!0},elapsedMs:Date.now()-n},t,i);' +
-    'if(l==="events"){let d=this.cdpEventBuffers.get(o.tabId)??[],c=Math.min(r.limit??500,5e3),f=d.slice(-c);return r.clear===!0&&this.cdpEventBuffers.set(o.tabId,[]),' +
-    'this.withMeta({ok:!0,value:{events:f,count:f.length,totalBuffered:d.length},elapsedMs:Date.now()-n},t,i)}' +
-    'let d=r.cdpMethod;if(typeof d!="string"||d.length===0)return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp send requires cdpMethod"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
-    'let f=r.params??{};if(f===null||typeof f!="object"||Array.isArray(f))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-n},t,i);' +
-    'd==="Debugger.enable"&&Promise.race([a.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((h,m)=>setTimeout(()=>m(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
-    'let m=await this.sendGuestCdpCommand(i,a,d,f,!1);return this.withMeta({ok:!0,value:m??null,elapsedMs:Date.now()-n},t,i)}' +
-    'catch(c){return this.withMeta({ok:!1,error:{code:"execution_error",message:c instanceof Error?c.message:String(c)},elapsedMs:Date.now()-n},t,i)}}');
+    'async executeCdp(__cdpCtx,__cdpCmd,__cdpTab,__cdpRun,__cdpT0){let __cdpGuest=await this.ensureGuest(__cdpTab,__cdpRun.controller.signal);' +
+    'if(!__cdpGuest||__SAFE__(()=>__cdpGuest.isDestroyed(),!0))return this.withMeta({ok:!1,error:{code:"backend_unavailable",message:"browser guest unavailable for cdp"},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    'try{__cdpGuest.debugger.isAttached()||__cdpGuest.debugger.attach("1.3")}catch{}__cdpTab.cdpAttached=__cdpGuest.debugger.isAttached(),this.cdpEventBuffers??(this.cdpEventBuffers=new Map());' +
+    'if(!this.cdpEventBuffers.has(__cdpRun.tabId)){let __cdpKey=__cdpRun.tabId,__cdpHandler=__TAPHANDLER__;' +
+    '__cdpGuest.debugger.on("message",__cdpHandler),this.cdpListeners??(this.cdpListeners=new Map()),this.cdpListeners.set(__cdpKey,{guest:__cdpGuest,handler:__cdpHandler})}' +
+    'let __cdpOp=__cdpCmd.op??"send";try{if(__cdpOp==="openDevTools")return typeof __cdpGuest.openDevTools=="function"&&__cdpGuest.openDevTools(),this.withMeta({ok:!0,value:{opened:!0},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    'if(__cdpOp==="events"){let __cdpBuf=this.cdpEventBuffers.get(__cdpRun.tabId)??[],__cdpLim=Math.min(__cdpCmd.limit??500,5e3),__cdpSlice=__cdpBuf.slice(-__cdpLim);return __cdpCmd.clear===!0&&this.cdpEventBuffers.set(__cdpRun.tabId,[]),' +
+    'this.withMeta({ok:!0,value:{events:__cdpSlice,count:__cdpSlice.length,totalBuffered:__cdpBuf.length},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab)}' +
+    'let __cdpMethod=__cdpCmd.cdpMethod;if(typeof __cdpMethod!=="string"||__cdpMethod.length===0)return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp send requires cdpMethod"},sideEffect:"none",elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    'let __cdpParams=__cdpCmd.params??{};if(__cdpParams===null||typeof __cdpParams!=="object"||Array.isArray(__cdpParams))return this.withMeta({ok:!1,error:{code:"invalid_request",message:"cdp params must be an object"},sideEffect:"none",elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab);' +
+    '__cdpMethod==="Debugger.enable"&&Promise.race([__cdpGuest.debugger.sendCommand("Debugger.setSkipAllPauses",{skip:!1}),new Promise((__cdpRes,__cdpRej)=>setTimeout(()=>__cdpRej(new Error("setSkipAllPauses timeout")),3e3))]).catch(()=>{});' +
+    'let __cdpOut=await this.sendGuestCdpCommand(__cdpTab,__cdpGuest,__cdpMethod,__cdpParams,!1);return this.withMeta({ok:!0,value:__cdpOut??null,elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab)}' +
+    'catch(__cdpErr){return this.withMeta({ok:!1,error:{code:"execution_error",message:__cdpErr instanceof Error?__cdpErr.message:String(__cdpErr)},elapsedMs:Date.now()-__cdpT0},__cdpCtx,__cdpTab)}}');
     return tpl
       .split('__SAFE__').join(safe)
       .split('__TAPHANDLER__').join(taphandler);
@@ -224,6 +228,24 @@ function detectHelpers(content) {
   return { safe, stamp };
 }
 
+// 注入模板的局部标识符必须与构建里的模块级助手名不冲突：
+// 4.0 的命名戳助手就叫 i，与旧模板的第三个参数 i 撞名 → 参数遮蔽助手 → "i is not a function"。
+// 这里检查的是「模板是否声明了同名局部」（遮蔽），模板里合法调用助手不算。
+function assertNoHelperCollision(tpl, safe, stamp) {
+  const declared = new Set();
+  const paramMatch = tpl.match(/async executeCdp\(([^)]*)\)/);
+  if (paramMatch) paramMatch[1].split(',').forEach(x => { const n = x.trim(); if (n) declared.add(n); });
+  for (const m of tpl.matchAll(/\b(?:let|const)\s+([A-Za-z_$][\w$]*)/g)) declared.add(m[1]);
+  for (const m of tpl.matchAll(/\(([^()]*)\)\s*=>/g)) {
+    m[1].split(',').forEach(x => { const n = x.trim(); if (n) declared.add(n); });
+  }
+  for (const helper of [safe, stamp]) {
+    if (helper && declared.has(helper)) {
+      throw new Error('injected template shadows helper name: ' + helper);
+    }
+  }
+}
+
 /** 对源码做内存变换；未命中任何规则的输入原样返回 */
 function transform(content, filename) {
   if (typeof content !== 'string' || content.length < 65536) return content;
@@ -265,7 +287,9 @@ function transform(content, filename) {
       const scopeHead = 'async executeInScope(' + scopeArgs + '){let ' + startv + '=Date.now();';
       const scopeHits = out.split(scopeHead).length - 1;
       if (scopeHits !== 1) { throw new Error('executeInScope head not unique (' + scopeHits + ')'); }
-      out = out.replace(scopeHead, EXEC_BUILDER_3123(safe, stamp) + scopeHead);
+      const tpl3123 = EXEC_BUILDER_3123(safe, stamp);
+      assertNoHelperCollision(tpl3123, safe, stamp);
+      out = out.replace(scopeHead, tpl3123 + scopeHead);
       LOG('[transform] main-executor-3123 (ctrl=' + ctrl + ', tab=' + tabv + ', start=' + startv + ', scope=(' + scopeArgs + '), safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
       continue;
     }
@@ -280,6 +304,7 @@ function transform(content, filename) {
         'if(o.tabId=i.tabId,this.refreshRuntimeProtection(i.tabId),r.method==="cdp")return await this.executeCdp(t,r,i,o,n);' +
         'if(o.tabId=i.tabId,this.refreshRuntimeProtection(i.tabId),r.method==="recordingStart"){';
       const execTo = EXEC_BUILDER(safe, stamp);
+      assertNoHelperCollision(execTo, safe, stamp);
       out = out.split(
         'if(o.tabId=i.tabId,this.refreshRuntimeProtection(i.tabId),r.method==="recordingStart"){'
       ).join(branchTo);
