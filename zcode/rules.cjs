@@ -237,7 +237,7 @@ function transform(content, filename) {
 
     if (rule.dynamic === 'main-executor-3123') {
       // 分派臂正则：if(X.tabId=Y.tabId,this.refreshRuntimeProtection(Y.tabId),r.method==="recordingStart"){
-      // X=控制器变量、Y=resolveTab 的 tab 记录变量；3.12.3=n/s、3.14.0=n/s、3.16.3=n/i，逐版本漂移
+      // X=运行记录变量、Y=resolveTab 的 tab 记录变量；3.12.3=n/s、3.16.3=n/i、4.0=o/s，逐版本漂移
       const { safe, stamp } = detectHelpers(out);
       const ARM_RE = /if\((\w+)\.tabId=(\w+)\.tabId,this\.refreshRuntimeProtection\(\2\.tabId\),r\.method==="recordingStart"\)\{/;
       const m = out.match(ARM_RE);
@@ -246,22 +246,27 @@ function transform(content, filename) {
         if (armCount > 0) { throw new Error('recordingStart arm present but does not match expected shape (new build?)'); }
         continue;
       }
-      const scopeHeadRe = /async executeInScope\(t,r,n\)\{let (\w+)=Date\.now\(\);/;
+      // scope 头也自适应：async executeInScope(A,B,C){let D=Date.now();
+      // 3.12.3~3.17.2 为 (t,r,n)，4.0 起第三参改为 o（运行记录）
+      const scopeHeadRe = /async executeInScope\((\w+),(\w+),(\w+)\)\{let (\w+)=Date\.now\(\);/;
       const hm = out.match(scopeHeadRe);
       if (!hm) { throw new Error('executeInScope head with Date.now start not found'); }
-      const ctrl = m[1], tabv = m[2], startv = hm[1];
+      const ctrl = m[1], tabv = m[2], startv = hm[4];
+      const ctxv = hm[1], cmdv = hm[2];          // executeInScope 的前两参：上下文 / 命令
+      const scopeArgs = ctxv + ',' + cmdv + ',' + hm[3];
       const arm = m[0];
       const armHits = out.split(arm).length - 1;
       if (armHits !== 1) { throw new Error('dispatcher arm not unique (' + armHits + ')'); }
+      // executeCdp(上下文, 命令, tab记录, 运行记录, 起始时间) —— 模板内部 i=tab记录、o=运行记录
       const branchTo =
         'if(' + ctrl + '.tabId=' + tabv + '.tabId,this.refreshRuntimeProtection(' + tabv + '.tabId),r.method==="cdp")' +
-        'return await this.executeCdp(t,r,' + tabv + ',' + ctrl + ',' + startv + ');' + arm;
+        'return await this.executeCdp(' + ctxv + ',' + cmdv + ',' + tabv + ',' + ctrl + ',' + startv + ');' + arm;
       out = out.replace(arm, branchTo);
-      const scopeHead = 'async executeInScope(t,r,n){let ' + startv + '=Date.now();';
+      const scopeHead = 'async executeInScope(' + scopeArgs + '){let ' + startv + '=Date.now();';
       const scopeHits = out.split(scopeHead).length - 1;
       if (scopeHits !== 1) { throw new Error('executeInScope head not unique (' + scopeHits + ')'); }
       out = out.replace(scopeHead, EXEC_BUILDER_3123(safe, stamp) + scopeHead);
-      LOG('[transform] main-executor-3123 (ctrl=' + ctrl + ', tab=' + tabv + ', start=' + startv + ', safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
+      LOG('[transform] main-executor-3123 (ctrl=' + ctrl + ', tab=' + tabv + ', start=' + startv + ', scope=(' + scopeArgs + '), safe=' + safe + ', stamp=' + (stamp || 'none') + ') <- ' + filename);
       continue;
     }
 
